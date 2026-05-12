@@ -1,0 +1,40 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Credentials / Secrets
+credentials.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Data and large files
+*.csv
+*.kmz
+*.kml
+*.tif
+*.tiff
+*.zip
+Datasets - ArcGIS Pro/
+Datasets - GEE/
+GEE - Outputs/
+tmp_kmz_api/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

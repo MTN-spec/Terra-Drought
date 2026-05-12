@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terra Drought Pitch Deck | ZB Hackathon</title>
+    <link rel="stylesheet" href="presentation.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Hero -->
+        <section class="slide active" id="slide-1">
+            <div class="background" style="background-image: url('../../agri_shield_hero_bg_1776724466017.png');"></div>
+            <div class="content glass">
+                <div class="logo">TERRA DROUGHT x ZB BANK</div>
+                <h1>Protecting the Future of Zimbabwe's Farmers</h1>
+                <p class="subtitle">A Parametric Insurance Ecosystem Powered by Satellite Intelligence & Smile Cash.</p>
+                <div class="hint">Press [Space] or [→] to begin</div>
+            </div>
+        </section>
+
+        <!-- Slide 2: The Problem -->
+        <section class="slide" id="slide-2">
+            <div class="background" style="background-image: url('../../agri_shield_problem_bg_1776724502983.png');"></div>
+            <div class="content glass">
+                <h2 class="alert-text">The Climate Gap</h2>
+                <p>Traditional insurance is too slow. Farmers wait months for claims while their crops fail and families suffer.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="value">90%</span>
+                        <span class="label">Smallholders Uninsured</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="value">3-6 mo</span>
+                        <span class="label">Average Claim Time</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3: The Solution -->
+        <section class="slide" id="slide-3">
+            <div class="overlay-grad"></div>
+            <div class="content glass">
+                <h2>Real-Time Resilience</h2>
+                <p>We eliminate human inspection. Our system monitors every farm daily using <b>Google Earth Engine</b>.</p>
+                <ul class="feature-list">
+                    <li><b>Automated:</b> Payouts triggered by NDVI/VCI anomalies.</li>
+                    <li><b>Transparency:</b> Farmers see their crop health in real-time.</li>
+                    <li><b>Integrated:</b> Built directly into the ZB Smile Cash API.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Slide 4: How it Works -->
+        <section class="slide" id="slide-4">
+            <div class="content glass">
+                <h2>The Tech Stack</h2>
+                <div class="tech-flow">
+                    <div class="tech-node">🛰️ SATELLITE<br>Sentinel-2 L2A</div>
+                    <div class="tech-arrow">➜</div>
+                    <div class="tech-node">🧠 ENGINE<br>Python GEE API</div>
+                    <div class="tech-arrow">➜</div>
+                    <div class="tech-node">💰 PAYOUT<br>ZB Smile API</div>
+                </div>
+                <p class="footnote">Verification occurs in milliseconds, not months.</p>
+            </div>
+        </section>
+
+        <!-- Slide 5: Demo Snapshot -->
+        <section class="slide" id="slide-5">
+            <div class="content glass">
+                <h2>The Command Center</h2>
+                <p>A unified GIS dashboard for insurers and a simple wallet interface for farmers.</p>
+                <div class="demo-placeholder">
+                    [Live Dashboard Integration]
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: Financial Inclusion -->
+        <section class="slide" id="slide-6">
+            <div class="content glass">
+                <h2>Beyond Insurance: Inclusion</h2>
+                <p>Terra Drought is a gateway to the ZB banking ecosystem.</p>
+                <div class="inclusion-cards">
+                    <div class="card">💳 Smile Wallet Access</div>
+                    <div class="card">📈 Inputs Financing</div>
+                    <div class="card">📱 Digital Literacy</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Closing -->
+        <section class="slide" id="slide-7">
+            <div class="content glass centered">
+                <h2>Terra Drought</h2>
+                <h3>Bridging the Gap, Protecting the Growth.</h3>
+                <p>Thank You!</p>
+                <div class="footer-logos">
+                    <span>ZB BANK</span> | <span>TERRA DROUGHT</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button id="prevBtn">←</button>
+        <span id="slideCounter">1 / 7</span>
+        <button id="nextBtn">→</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 7;
+
+        function updateSlides() {
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+            document.getElementById(`slide-${currentSlide}`).classList.add('active');
+            document.getElementById('slideCounter').innerText = `${currentSlide} / ${totalSlides}`;
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlides();
+            }
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlides();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                if (currentSlide < totalSlides) {
+                    currentSlide++;
+                    updateSlides();
+                }
+            }
+            if (e.key === 'ArrowLeft') {
+                if (currentSlide > 1) {
+                    currentSlide--;
+                    updateSlides();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

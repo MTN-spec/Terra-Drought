@@ -1,0 +1,1056 @@
+/* ============================================================
+   TERRA DROUGHT — Dashboard Application Logic
+   ============================================================ */
+
+// --- API Configuration ---
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? '' 
+    : 'https://terra-drought-api.onrender.com'; // Replace with your actual Render URL
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // ─── Initialize Lucide Icons ───
+    lucide.createIcons();
+
+    // ─── Login Logic ───
+    const loginOverlay = document.getElementById('login-overlay');
+    const loginBtn = document.getElementById('login-btn');
+    const loginPass = document.getElementById('login-pass');
+    const loginError = document.getElementById('login-error');
+
+    function handleLogin() {
+        const pwd = loginPass.value.trim();
+        if (pwd === 'Mimosa@2030') {
+            loginOverlay.style.display = 'none';
+            loginOverlay.classList.add('hidden');
+            initData();
+        } else {
+            loginError.style.display = 'block';
+        }
+    }
+    if (loginBtn) {
+        loginBtn.addEventListener('click', handleLogin);
+        loginPass.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    }
+
+    // ─── Initialize Leaflet Map ───
+    const map = L.map('map', {
+        center: [-17.62, 27.33],   // Centered on Binga District
+        zoom: 9,
+        maxZoom: 24,
+        zoomControl: false,
+        attributionControl: false
+    });
+
+    // ─── Basemaps ───
+    const darkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 24,
+        maxNativeZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    });
+
+    const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 24,
+        maxNativeZoom: 20,
+        attribution: 'Imagery &copy; Google Maps'
+    });
+
+    const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 24,
+        maxNativeZoom: 19,
+        attribution: 'Imagery &copy; Esri'
+    });
+
+    const topographic = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 24,
+        maxNativeZoom: 17,
+        attribution: 'Map data: &copy; OpenStreetMap contributors'
+    });
+
+    // Default to Google Satellite
+    googleSat.addTo(map);
+
+    const baseMaps = {
+        "High-Res Google Satellite": googleSat,
+        "Esri World Imagery": esriSat,
+        "Dark Mode Dashboard": darkMatter,
+        "Topographic": topographic
+    };
+
+    const farmersGroup = L.layerGroup().addTo(map);
+
+    const overlayMaps = {
+        "Monitored Farms": farmersGroup
+    };
+
+    // Add Layer Control
+    L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
+
+    const fieldLayers = {};
+
+    async function fetchWeatherData(lat = -17.3667, lng = 30.2, locName = 'Chinhoyi Region') {
+        try {
+            const locEl = document.getElementById('w-loc');
+            if (locEl) locEl.textContent = locName + ' (Open-Meteo API)';
+            document.getElementById('w-desc').textContent = 'Fetching Live Data...';
+
+            const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=et0_fao_evapotranspiration,precipitation_sum&hourly=soil_moisture_3_to_9cm&timezone=Africa%2FCairo&past_days=30`);
+            if (!response.ok) throw new Error('Weather API error');
+            const data = await response.json();
+
+            const current = data.current;
+            const daily = data.daily;
+            const hourly = data.hourly;
+
+            document.getElementById('w-temp').textContent = Math.round(current.temperature_2m) + '°';
+            document.getElementById('w-wind').textContent = current.wind_speed_10m + ' km/h';
+
+            const past30Precip = (daily && daily.precipitation_sum) ? daily.precipitation_sum.filter((_, i) => i < 30).reduce((a, b) => a + (b || 0), 0) : 0;
+            document.getElementById('w-precip').textContent = Math.round(past30Precip) + ' mm';
+
+            const todayEt0 = (daily && daily.et0_fao_evapotranspiration) ? (daily.et0_fao_evapotranspiration[30] || daily.et0_fao_evapotranspiration[0]) : 0;
+            document.getElementById('w-et0').textContent = (todayEt0 || 0).toFixed(1) + ' mm/d';
+
+            const sm = hourly && hourly.soil_moisture_3_to_9cm;
+            const currentSoil = sm ? sm[sm.length - 1] : null;
+            document.getElementById('w-soil').textContent = (currentSoil != null ? currentSoil.toFixed(2) : '--') + ' m³/m³';
+
+            const c = current.weather_code;
+            let desc = 'Clear', icon = '☀️';
+            if (c === 0) { desc = 'Clear sky'; icon = '☀️'; }
+            else if (c <= 3) { desc = 'Partly cloudy'; icon = '⛅'; }
+            else if (c === 45 || c === 48) { desc = 'Foggy'; icon = '🌫️'; }
+            else if (c <= 67) { desc = 'Rain'; icon = '🌧️'; }
+            else if (c <= 77) { desc = 'Snow'; icon = '❄️'; }
+            else if (c <= 82) { desc = 'Rain showers'; icon = '🌦️'; }
+            else if (c >= 95) { desc = 'Thunderstorm'; icon = '⛈️'; }
+
+            document.getElementById('w-desc').textContent = desc;
+            document.getElementById('w-icon').textContent = icon;
+        } catch (err) {
+            console.error('Error fetching weather:', err);
+            document.getElementById('w-desc').textContent = 'Live data unavailable';
+        }
+    }
+
+    function initData() {
+        fetchWeatherData(-17.62, 27.33, 'Binga District');
+        loadForecast(); // Load ML Prediction Forecast
+        loadAdminBoundary(); // Load Binga District boundary
+        loadProtectedZones(); // Load National Parks (Excluded Zones)
+        fetch(API_BASE_URL + '/api/farmers')
+            .then(res => {
+                if (!res.ok) throw new Error("API Offline");
+                return res.json();
+            })
+            .catch(() => {
+                console.warn("Live API not found, falling back to static farmer_db.json");
+                return fetch('data/farmer_db.json').then(res => res.json());
+            })
+            .then(data => {
+                const panelFields = document.getElementById('panel-fields');
+                if (!panelFields) return;
+                panelFields.querySelectorAll('.field-card').forEach(c => c.remove());
+
+                let severeCount = 0;
+                let moderateCount = 0;
+
+                data.features.forEach((feature, index) => {
+                    const props = feature.properties;
+                    const coords = feature.geometry.coordinates;
+                    const geomType = feature.geometry.type;
+                    const fieldId = 'field-' + index;
+
+                    let layer;
+                    if (geomType === 'Point') {
+                        layer = L.circleMarker([coords[1], coords[0]], {
+                            radius: 8, color: props.color, fillColor: props.color, fillOpacity: 0.4, weight: 2
+                        }).addTo(farmersGroup);
+                    } else if (geomType === 'LineString' || geomType === 'Polygon') {
+                        let latLngs = [];
+                        let sourceCoords = geomType === 'Polygon' ? coords[0] : coords;
+                        sourceCoords.forEach(c => latLngs.push([c[1], c[0]]));
+
+                        layer = L.polygon(latLngs, {
+                            color: props.color, weight: 2, fillColor: props.color, fillOpacity: 0.25,
+                            dashArray: props.status === 'triggered' ? '6,4' : null
+                        }).addTo(farmersGroup);
+                    }
+
+                    if (!layer) return;
+
+                    const farmSize = (Math.random() * 20 + 2).toFixed(1); // Mock size between 2-22 ha
+                    const yieldEst = (farmSize * (props.ndvi * 1.2 + 0.8)).toFixed(1); // Mock yield
+
+                    // Robust centroid calculation for both Points and Polygons
+                    const pCenter = layer.getBounds ? layer.getBounds().getCenter() : layer.getLatLng();
+                    console.log(`Initialized ${props.name} at `, pCenter);
+
+                    layer.bindPopup(`
+                        <div style="font-family:Inter,sans-serif;font-size:12px;min-width:220px;padding:2px">
+                            <strong style="font-size:14px;color:#fff">${props.name}</strong>
+                            <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                                    <span style="color:#8b99ab">Crop:</span>
+                                    <span style="color:#60a5fa;font-weight:600">Tobacco</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                                    <span style="color:#8b99ab">Regional VHI:</span>
+                                    <span style="color:#e8ecf1">${props.vhi_regional}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                                    <span style="color:#8b99ab">Local NDVI:</span>
+                                    <span style="color:${props.color};font-weight:700">${props.ndvi}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+                                    <span style="color:#8b99ab">Hybrid Risk Score:</span>
+                                    <span style="color:${props.color};font-weight:800;font-size:14px">${props.hybrid_risk_score}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:#8b99ab">Risk Category:</span>
+                                    <span style="color:${props.color};font-weight:600;text-transform:uppercase">${props.status}</span>
+                                </div>
+                                <button onclick="window.open('https://ee-mhandutakunda.projects.earthengine.app/view/terra-drought---binga?lon=${pCenter.lng.toFixed(5)}&lat=${pCenter.lat.toFixed(5)}&zoom=16', '_blank')" style="margin-top:10px; width:100%; background:rgba(37,99,235,0.2); border:1px solid #2563eb; color:#60a5fa; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-family:Inter,sans-serif;">
+                                    🛰️ Deep GEE Analytics
+                                </button>
+                            </div>
+                        </div>
+                    `, { className: 'dark-popup' });
+
+                    fieldLayers[fieldId] = layer;
+
+                    if (props.status === 'triggered') {
+                        const center = layer.getBounds ? layer.getBounds().getCenter() : layer.getLatLng();
+                        L.circleMarker(center, {
+                            radius: 12, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, weight: 2, className: 'pulse-marker'
+                        }).addTo(farmersGroup);
+                    }
+
+                    const status = props.status; // 'severe', 'moderate', or 'healthy'
+                    const thumbClass = status === 'severe' ? 'critical' : (status === 'moderate' ? 'alert' : 'healthy');
+                    
+                    if (status === 'severe') severeCount++;
+                    if (status === 'moderate') moderateCount++;
+
+                    const nameParts = props.name.trim().split(' ');
+                    const initials = nameParts.length > 1
+                        ? (nameParts[0][0] + nameParts[1][0]).toUpperCase()
+                        : props.name.substring(0, 2).toUpperCase();
+
+                    const card = document.createElement('div');
+                    card.className = 'field-card';
+                    card.id = fieldId;
+                    card.dataset.status = status;
+
+                    card.innerHTML = `
+                        <div class="field-card-thumb">
+                            <div class="field-avatar">${initials}</div>
+                            <span class="field-status-dot ${status}"></span>
+                        </div>
+                        <div class="field-card-info" style="width: 100%;">
+                            <h4>${props.name}</h4>
+                            <div class="field-meta">
+                                <span><i data-lucide="leaf" style="width:12px;height:12px"></i> Tobacco</span>
+                                <span style="margin-left:8px">• ${farmSize} ha</span>
+                            </div>
+                            <div class="field-indices" style="margin-bottom: 6px;">
+                                <span class="idx-pill ${thumbClass}">Score: ${props.hybrid_risk_score}</span>
+                                <span class="idx-pill healthy" style="margin-left:5px">NDVI: ${props.ndvi}</span>
+                            </div>
+                            <div style="padding: 6px; background: rgba(59,130,246,0.05); border-left: 3px solid #3b82f6; border-radius: 4px; margin-top: 5px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 10px; color: #94a3b8; text-transform: uppercase; display: flex; align-items: center;"><i data-lucide="info" style="width:10px; height:10px; margin-right:4px;"></i>Prediction Basis</span>
+                                    <span style="font-size: 11px; font-weight: 600; color: #3b82f6;">Reg. VHI: ${props.vhi_regional}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    panelFields.appendChild(card);
+
+                    card.addEventListener('click', () => {
+                        let center;
+                        if (layer.getBounds) {
+                            map.flyToBounds(layer.getBounds().pad(0.5), { duration: 1.2 });
+                            center = layer.getBounds().getCenter();
+                        } else {
+                            map.flyTo(layer.getLatLng(), 15, { duration: 1.2 });
+                            center = layer.getLatLng();
+                        }
+                        layer.openPopup();
+
+                        // Update Weather Panel dynamically
+                        fetchWeatherData(center.lat, center.lng, props.name);
+                    });
+                });
+
+                // Update summary stats
+                document.getElementById('stat-monitored').textContent = data.features.length;
+                document.getElementById('stat-severe').textContent = severeCount;
+                document.getElementById('stat-forecast').textContent = (severeCount + moderateCount);
+
+                lucide.createIcons();
+            })
+            .catch(err => console.error('Error loading farms:', err));
+    }
+
+    function loadForecast() {
+        const forecastList = document.getElementById('forecast-list');
+        if (!forecastList) return;
+
+        fetch(API_BASE_URL + '/api/predict')
+            .then(res => res.json())
+            .then(data => {
+                forecastList.innerHTML = '';
+                if (data.status === 'error') {
+                    forecastList.innerHTML = `<p style="color:#ef4444">${data.message}</p>`;
+                    return;
+                }
+
+                data.forecast.forEach(item => {
+                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const monthName = monthNames[item.month - 1];
+                    const riskClass = item.risk_level === 'High' ? 'triggered' : (item.risk_level === 'Moderate' ? 'warning' : 'healthy');
+                    
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item ' + riskClass;
+                    div.innerHTML = `
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div style="display:flex; justify-content:space-between; align-items:center">
+                                <span class="timeline-date">${monthName} 2026 (${item.horizon})</span>
+                                <span class="idx-pill ${riskClass}">${item.risk_level} Risk</span>
+                            </div>
+                            <p style="margin: 5px 0 0; color: #e8ecf1">Predicted VHI Index: <strong>${item.predicted_vhi}</strong></p>
+                            <div class="spi-bar" style="height: 4px; margin-top: 8px;">
+                                <div class="spi-marker" style="left: ${item.predicted_vhi}%"></div>
+                                <div class="spi-gradient"></div>
+                            </div>
+                        </div>
+                    `;
+                    forecastList.appendChild(div);
+                });
+
+                // Update analytics too
+                const avgVhi = document.getElementById('avg-vhi');
+                if (avgVhi && data.forecast.length > 0) {
+                    avgVhi.textContent = data.forecast[0].predicted_vhi;
+                    document.getElementById('vhi-status').textContent = `Status: ${data.forecast[0].risk_level}`;
+                }
+            });
+    }
+
+    // ─── Map Controls ───
+    document.getElementById('zoom-in').addEventListener('click', () => map.zoomIn());
+    document.getElementById('zoom-out').addEventListener('click', () => map.zoomOut());
+    document.getElementById('locate-me').addEventListener('click', () => {
+        map.setView([-17.275576, 29.990513], 11);
+    });
+    document.getElementById('fullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Update coords display on mouse move
+    map.on('mousemove', (e) => {
+        const lat = e.latlng.lat.toFixed(2);
+        const lng = e.latlng.lng.toFixed(2);
+        document.getElementById('coords').textContent = `${lat}°S, ${lng}°E`;
+    });
+    map.on('zoomend', () => {
+        document.getElementById('zoom-level').textContent = `Zoom: ${map.getZoom()}`;
+    });
+
+
+    // ─── AOI Drawing Tools (Leaflet.draw) ───
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+        position: 'topleft',
+        draw: {
+            polygon: {
+                allowIntersection: false,
+                showArea: true,
+                shapeOptions: { color: '#60a5fa', weight: 2, fillColor: '#60a5fa', fillOpacity: 0.15 }
+            },
+            rectangle: {
+                shapeOptions: { color: '#8b5cf6', weight: 2, fillColor: '#8b5cf6', fillOpacity: 0.15 }
+            },
+            circle: {
+                shapeOptions: { color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.15 }
+            },
+            polyline: {
+                shapeOptions: { color: '#10b981', weight: 3 }
+            },
+            marker: true,
+            circlemarker: false
+        },
+        edit: {
+            featureGroup: drawnItems,
+            remove: true
+        }
+    });
+
+    let drawControlActive = false;
+
+    // Toggle draw toolbar via sidebar button
+    const drawBtn = document.getElementById('nav-draw');
+    if (drawBtn) {
+        drawBtn.addEventListener('click', () => {
+            if (drawControlActive) {
+                map.removeControl(drawControl);
+                drawBtn.classList.remove('active');
+                drawControlActive = false;
+            } else {
+                map.addControl(drawControl);
+                drawBtn.classList.add('active');
+                drawControlActive = true;
+            }
+        });
+    }
+
+    // Handle newly created shapes
+    map.on(L.Draw.Event.CREATED, (e) => {
+        const layer = e.layer;
+        const type = e.layerType;
+
+        let popupContent = `<div style="font-family:Inter,sans-serif;font-size:12px;color:#e8ecf1">`;
+        popupContent += `<strong style="color:#60a5fa;text-transform:uppercase">${type}</strong><br>`;
+
+        if (type === 'polygon' || type === 'rectangle') {
+            const latlngs = layer.getLatLngs()[0];
+            const area = L.GeometryUtil ? L.GeometryUtil.geodesicArea(latlngs) : 0;
+            if (area > 0) {
+                const hectares = (area / 10000).toFixed(2);
+                popupContent += `<span style="color:#8b99ab">Area:</span> <span style="color:#10b981;font-weight:600">${hectares} ha</span><br>`;
+            }
+        } else if (type === 'circle') {
+            const radius = layer.getRadius();
+            const areaM2 = Math.PI * radius * radius;
+            const hectares = (areaM2 / 10000).toFixed(2);
+            popupContent += `<span style="color:#8b99ab">Radius:</span> ${radius.toFixed(0)} m<br>`;
+            popupContent += `<span style="color:#8b99ab">Area:</span> <span style="color:#10b981;font-weight:600">${hectares} ha</span><br>`;
+        } else if (type === 'polyline') {
+            let totalDist = 0;
+            const coords = layer.getLatLngs();
+            for (let i = 1; i < coords.length; i++) {
+                totalDist += coords[i - 1].distanceTo(coords[i]);
+            }
+            popupContent += `<span style="color:#8b99ab">Length:</span> ${(totalDist / 1000).toFixed(2)} km<br>`;
+        } else if (type === 'marker') {
+            const ll = layer.getLatLng();
+            popupContent += `<span style="color:#8b99ab">Lat:</span> ${ll.lat.toFixed(5)}<br>`;
+            popupContent += `<span style="color:#8b99ab">Lng:</span> ${ll.lng.toFixed(5)}<br>`;
+        }
+
+        popupContent += `</div>`;
+        layer.bindPopup(popupContent, { className: 'dark-popup' });
+        drawnItems.addLayer(layer);
+    });
+
+    map.on(L.Draw.Event.DELETED, () => {
+        console.log('AOI shapes deleted');
+    });
+
+
+    // ─── Sidebar Navigation ───
+    const navBtns = document.querySelectorAll('.sidebar-nav .nav-btn');
+    const panelTitle = document.getElementById('panel-title');
+    const rightPanel = document.getElementById('right-panel');
+    const mapContainer = document.getElementById('map-container');
+    const bottomPanel = document.getElementById('bottom-panel');
+
+    const panelMap = {
+        'fields': { title: 'MONITORED FARMS', content: 'panel-fields' },
+        'claims': { title: 'DROUGHT FORECAST', content: 'panel-claims' },
+        'weather': { title: 'CLIMATE CONDITIONS', content: 'panel-weather' },
+        'analytics': { title: 'PORTFOLIO ANALYTICS', content: 'panel-analytics' },
+        'notifications': { title: 'NOTIFICATIONS', content: 'panel-notifications' }
+    };
+
+    function showPanel(panelKey) {
+        // Hide all panel contents
+        document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+
+        if (panelKey && panelMap[panelKey]) {
+            const cfg = panelMap[panelKey];
+            panelTitle.textContent = cfg.title;
+            document.getElementById(cfg.content).classList.remove('hidden');
+            rightPanel.classList.remove('closed');
+            mapContainer.classList.remove('panel-closed');
+            bottomPanel.classList.remove('panel-closed');
+        }
+    }
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            navBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const panelKey = btn.dataset.panel;
+            if (panelKey === 'none') {
+                // Keep current panel
+            } else {
+                showPanel(panelKey);
+            }
+        });
+    });
+
+    // Close panel button
+    document.getElementById('panel-close').addEventListener('click', () => {
+        rightPanel.classList.toggle('closed');
+        mapContainer.classList.toggle('panel-closed');
+        bottomPanel.classList.toggle('panel-closed');
+        setTimeout(() => map.invalidateSize(), 300);
+    });
+
+    // (Field card click listeners are now attached dynamically in initData)
+
+
+    // ─── Search & Global Filter Logic ───
+    function applyFilters() {
+        const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+        const activeFilter = document.querySelector('.filter-chip.active')?.dataset.filter || 'all';
+
+        document.querySelectorAll('.field-card').forEach(card => {
+            const name = card.querySelector('h4').textContent.toLowerCase();
+            const crop = "tobacco"; // We hardcoded it in the UI
+            const matchesQuery = name.includes(query) || crop.includes(query);
+            const matchesFilter = activeFilter === 'all' || card.dataset.status === activeFilter;
+
+            if (matchesQuery && matchesFilter) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // Bind Search Bar
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFilters);
+    }
+
+    // Bind Filter Chips
+    const filterChips = document.querySelectorAll('.filter-chip');
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            filterChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            applyFilters();
+        });
+    });
+
+
+    // ─── Layer Tabs ───
+    const layerTabs = document.querySelectorAll('.layer-tab');
+    layerTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            layerTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const category = tab.dataset.tab;
+            document.querySelectorAll('.layer-card').forEach(card => {
+                if (category === 'all') {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = card.dataset.category === category ? 'flex' : 'none';
+                }
+            });
+        });
+    });
+
+    // ─── Satellite Layer Tile Definitions ───
+    const layerCards = document.querySelectorAll('.layer-card');
+    const indexRanges = {
+        'ndvi': '-1.0 — 1.0',
+        'ndwi': '-1.0 — 1.0',
+        'vci': '0 — 100%',
+        'evi': '0.0 — 1.0',
+        'smi': '0.0 — 0.5',
+        'lst': '15°C — 45°C',
+        'rainfall': '0 — 20 mm/hr',
+        'risk': 'Low — High',
+        'payout': 'Triggered',
+        'truecolor': 'Natural'
+    };
+    const indexGradients = {
+        'ndvi': 'linear-gradient(90deg, #d73027, #fee08b, #1a9850)',
+        'ndwi': 'linear-gradient(90deg, #orange, #white, #blue)',
+        'vci': 'linear-gradient(90deg, #800000, #ff0000, #ffff00, #00ff00)',
+        'evi': 'linear-gradient(90deg, #63300a, #ffff00, #00ff00, #004000)',
+        'smi': 'linear-gradient(90deg, #fef0d9, #fdcc8a, #fc8d59, #d7301f)',
+        'lst': 'linear-gradient(90deg, #313695, #abd9e9, #fee090, #d73027)',
+        'rainfall': 'linear-gradient(90deg, #f7fbff, #6baed6, #08306b)',
+        'risk': 'linear-gradient(90deg, #fee5d9, #fcae91, #fb6a4a, #cb181d)',
+        'payout': 'linear-gradient(90deg, #ffffff, #ff0000)',
+        'truecolor': 'none'
+    };
+
+    const satelliteLayers = {};
+    let activeOverlay = null;
+    let activeLayerKey = null;
+
+    // NASA GIBS — MODIS NDVI (16-day, 250m)
+    satelliteLayers['ndvi'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_NDVI_8Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.7,
+        time: '2024-04-10', // Reliable recent date for demo
+        crs: L.CRS.EPSG3857,
+        attribution: 'NASA GIBS MODIS NDVI'
+    });
+
+    // NASA GIBS — MODIS Land Surface Temperature
+    satelliteLayers['lst'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_Land_Surface_Temp_Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.7,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'NASA GIBS MODIS LST'
+    });
+
+    // ESRI World Imagery (True Color satellite)
+    satelliteLayers['truecolor'] = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        opacity: 0.9,
+        attribution: 'Esri World Imagery'
+    });
+
+    // NASA GIBS — CHIRPS-like Precipitation
+    satelliteLayers['rainfall'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'IMERG_Precipitation_Rate',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.65,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'NASA GIBS GPM IMERG'
+    });
+
+    // Sentinel-2 Cloudless (EVI/NDWI approximation via visual bands)
+    satelliteLayers['ndwi'] = L.tileLayer('https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg', {
+        opacity: 0.7,
+        attribution: 'EOX Sentinel-2 Cloudless'
+    });
+
+    // EVI — Use MODIS EVI from GIBS
+    satelliteLayers['evi'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_EVI_8Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.7,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'NASA GIBS MODIS EVI'
+    });
+
+    // VCI — Derived (placeholder using NDVI layer with different styling)
+    satelliteLayers['vci'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_NDVI_8Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.6,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'VCI (derived from MODIS NDVI baseline)'
+    });
+
+    // SMI — Soil Moisture from SMAP (NASA GIBS)
+    satelliteLayers['smi'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'SMAP_L4_Analyzed_Root_Zone_Soil_Moisture',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.65,
+        time: '2024-01-10', // SMAP data has longer lag
+        crs: L.CRS.EPSG3857,
+        attribution: 'NASA SMAP L4 Soil Moisture'
+    });
+
+    // Risk Map — Semi-transparent red overlay using MODIS Thermal Anomalies
+    satelliteLayers['risk'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_Thermal_Anomalies_Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.6,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'AI Risk Score (MODIS Thermal)'
+    });
+
+    // Payout zones — Same thermal layer with higher opacity for triggered zones
+    satelliteLayers['payout'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_Thermal_Anomalies_Day',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.8,
+        time: '2024-04-10',
+        crs: L.CRS.EPSG3857,
+        attribution: 'Triggered Payout Zones'
+    });
+
+    layerCards.forEach(card => {
+        card.addEventListener('click', () => {
+            layerCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
+            const layer = card.dataset.layer;
+            const name = card.querySelector('.layer-name').textContent;
+
+            // Update badge safely
+            const indexBadge = document.getElementById('active-index-badge');
+            if (indexBadge && typeof indexRanges !== 'undefined' && typeof indexGradients !== 'undefined') {
+                indexBadge.querySelector('span:first-of-type').textContent = name;
+                indexBadge.querySelector('.index-range').textContent = indexRanges[layer] || '';
+                indexBadge.querySelector('.index-color-swatch').style.background = indexGradients[layer] || '';
+            }
+
+            // Toggle satellite overlay on map
+            if (activeOverlay) {
+                map.removeLayer(activeOverlay);
+                activeOverlay = null;
+            }
+
+            if (activeLayerKey === layer) {
+                // Clicking same layer again = toggle off
+                activeLayerKey = null;
+            } else if (satelliteLayers[layer]) {
+                activeOverlay = satelliteLayers[layer];
+                map.addLayer(activeOverlay);
+                activeLayerKey = layer;
+            }
+        });
+    });
+
+
+    // ─── Bottom Layers Toggle ───
+    const layersToggle = document.getElementById('layers-toggle');
+    layersToggle.addEventListener('click', () => {
+        bottomPanel.classList.toggle('collapsed');
+        const isCollapsed = bottomPanel.classList.contains('collapsed');
+        layersToggle.querySelector('span').textContent = isCollapsed ? 'Show' : 'Hide';
+
+        // Move map info badges
+        const newBottom = isCollapsed ? '44px' : 'var(--bottom-panel-height)';
+        document.querySelector('.map-info').style.bottom = isCollapsed ? '44px' : '';
+        document.querySelector('.active-index-badge').style.bottom = isCollapsed ? '44px' : '';
+    });
+
+
+    // ─── Resize Map on Window Resize ───
+    window.addEventListener('resize', () => map.invalidateSize());
+
+    // ─── Administrative Boundary Loading ───
+    async function loadAdminBoundary() {
+        try {
+            const response = await fetch('data/Binga_District.kmz');
+            const arrayBuffer = await response.arrayBuffer();
+
+            // Use JSZip and toGeoJSON to parse KMZ
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+            const kmlText = await zip.file(kmlFile).async("string");
+
+            const parser = new DOMParser();
+            const kml = parser.parseFromString(kmlText, "text/xml");
+            const geojson = toGeoJSON.kml(kml);
+
+            const boundaryLayer = L.geoJSON(geojson, {
+                style: {
+                    color: '#60a5fa',
+                    weight: 3,
+                    fillOpacity: 0.1,
+                    dashArray: '5, 5'
+                },
+                interactive: false
+            }).addTo(map);
+
+            // Set strict bounds to Binga District
+            const bounds = boundaryLayer.getBounds();
+            map.fitBounds(bounds);
+            map.setMaxBounds(bounds.pad(0.1)); // Add 10% padding but restrict movement
+
+            console.log("Binga District boundary loaded and map restricted.");
+        } catch (err) {
+            console.error("Error loading Binga boundary:", err);
+        }
+    }
+
+    // Initial panel
+    showPanel('fields');
+    document.getElementById('nav-fields').classList.add('active');
+    document.getElementById('nav-dashboard').classList.remove('active');
+
+    // ─── Custom Popup Styles ───
+    const style = document.createElement('style');
+    style.textContent = `
+        .dark-popup .leaflet-popup-content-wrapper {
+            background: rgba(22, 33, 48, 0.95);
+            color: #e8ecf1;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+        }
+        .dark-popup .leaflet-popup-tip {
+            background: rgba(22, 33, 48, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dark-popup .leaflet-popup-close-button {
+            color: #8b99ab !important;
+        }
+        .pulse-marker {
+            animation: pulse-ring 2s ease infinite;
+        }
+        @keyframes pulse-ring {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // ─── Live Weather API (Open-Meteo) ───
+    async function fetchLiveWeather() {
+        try {
+            // Chinhoyi Coordinates
+            const lat = -17.2755;
+            const lng = 29.9905;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=soil_moisture_0_to_1cm,et0_fao_evapotranspiration&timezone=Africa%2FHarare`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!data || !data.current) return;
+
+            const current = data.current;
+            // Get current hour index roughly
+            const currentHourStr = current.time.substring(0, 14) + "00";
+            const hourIdx = data.hourly.time.indexOf(currentHourStr) !== -1 ? data.hourly.time.indexOf(currentHourStr) : 12;
+
+            const soilMoisture = (data.hourly.soil_moisture_0_to_1cm[hourIdx] !== undefined) ? data.hourly.soil_moisture_0_to_1cm[hourIdx] : 0.15;
+            const et0 = (data.hourly.et0_fao_evapotranspiration[hourIdx] !== undefined) ? data.hourly.et0_fao_evapotranspiration[hourIdx] : 4.1;
+
+            // DOM
+            const wTemp = document.getElementById('w-temp');
+            const wDesc = document.getElementById('w-desc');
+            const wIcon = document.getElementById('w-icon');
+            const wPrecip = document.getElementById('w-precip');
+            const wWind = document.getElementById('w-wind');
+            const wSoil = document.getElementById('w-soil');
+            const wEt0 = document.getElementById('w-et0');
+
+            if (wTemp) wTemp.textContent = current.temperature_2m;
+            if (wPrecip) wPrecip.textContent = current.precipitation + ' mm';
+            if (wWind) wWind.textContent = current.wind_speed_10m + ' km/h';
+            if (wSoil) wSoil.textContent = soilMoisture + ' m³/m³';
+            if (wEt0) wEt0.textContent = et0 + ' mm/d';
+
+            // Weather Code Translation (WMO)
+            const code = current.weather_code;
+            let condition = "Clear";
+            let emoji = "☀️";
+            if (code === 1 || code === 2) { condition = "Partly Cloudy"; emoji = "⛅"; }
+            else if (code === 3) { condition = "Overcast"; emoji = "☁️"; }
+            else if (code >= 45 && code <= 48) { condition = "Fog"; emoji = "🌫️"; }
+            else if (code >= 51 && code <= 67) { condition = "Rain / Showers"; emoji = "🌧️"; }
+            else if (code >= 71 && code <= 77) { condition = "Snow"; emoji = "❄️"; }
+            else if (code >= 80 && code <= 82) { condition = "Heavy Rain"; emoji = "⛈️"; }
+            else if (code >= 95) { condition = "Thunderstorm"; emoji = "🌩️"; }
+
+            if (wDesc) wDesc.textContent = condition;
+            if (wIcon) wIcon.textContent = emoji;
+
+            // Live Drought SPI calculation based on soil moisture
+            const spiMarker = document.querySelector('.spi-marker');
+            if (spiMarker) {
+                const spiPercent = Math.min(Math.max((soilMoisture / 0.4) * 100, 5), 95);
+                spiMarker.style.left = spiPercent + '%';
+            }
+
+        } catch (error) {
+            console.error("Failed to fetch live weather:", error);
+            const wDesc = document.getElementById('w-desc');
+            if (wDesc) wDesc.textContent = "API Offline";
+        }
+    }
+
+    // ─── AOI Upload Logic ───
+    const aoiUploadBtn = document.getElementById('aoi-upload-btn');
+    const aoiFileInput = document.getElementById('aoi-file-input');
+
+    if (aoiUploadBtn && aoiFileInput) {
+        aoiUploadBtn.addEventListener('click', () => {
+            aoiFileInput.click();
+        });
+
+        aoiFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const name = file.name.toLowerCase();
+            const reader = new FileReader();
+
+            const processGeoJSON = (geojson) => {
+                const layer = L.geoJSON(geojson, {
+                    style: {
+                        color: '#60a5fa',
+                        weight: 2,
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.2
+                    }
+                });
+
+                // Add to the drawnItems group so it can be edited/deleted
+                layer.eachLayer(l => drawnItems.addLayer(l));
+                map.fitBounds(drawnItems.getBounds());
+            };
+
+            if (name.endsWith('.kml')) {
+                reader.onload = function (evt) {
+                    const kmlText = evt.target.result;
+                    const parser = new DOMParser();
+                    const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                    if (window.toGeoJSON) {
+                        const geojson = toGeoJSON.kml(kmlDoc);
+                        processGeoJSON(geojson);
+                    } else {
+                        alert("KML parser not loaded.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+            else if (name.endsWith('.kmz')) {
+                reader.onload = async function (evt) {
+                    try {
+                        const zip = await JSZip.loadAsync(evt.target.result);
+                        // Find the first .kml file inside
+                        const kmlFile = Object.keys(zip.files).find(key => key.toLowerCase().endsWith('.kml'));
+                        if (!kmlFile) throw new Error("No KML found inside KMZ.");
+
+                        const kmlText = await zip.files[kmlFile].async('string');
+                        const parser = new DOMParser();
+                        const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                        if (window.toGeoJSON) {
+                            processGeoJSON(toGeoJSON.kml(kmlDoc));
+                        }
+                    } catch (err) {
+                        alert("Error parsing KMZ: " + err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            else if (name.endsWith('.zip') || name.endsWith('.shp')) {
+                reader.onload = async function (evt) {
+                    try {
+                        if (window.shp) {
+                            const geojson = await shp(evt.target.result);
+                            processGeoJSON(geojson);
+                        } else {
+                            alert("Shapefile parser not loaded.");
+                        }
+                    } catch (err) {
+                        alert("Error parsing Shapefile: " + err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                alert("Please upload a .kml, .kmz, or .shp (.zip) file.");
+            }
+
+            // Reset input
+            aoiFileInput.value = '';
+        });
+    }
+
+    // ─── Drive GeoTIFF Overlay Logic ───
+    const driveSelect = document.getElementById('drive-image-select');
+    let driveRasterLayer = null;
+
+    if (driveSelect) {
+        fetch('/api/drive_images')
+            .then(res => res.ok ? res.json() : { images: [] })
+            .then(data => {
+                if (data.images && data.images.length > 0) {
+                    data.images.forEach(img => {
+                        const opt = document.createElement('option');
+                        opt.value = img.path;
+                        opt.textContent = `🗺️ ${img.name}`;
+                        driveSelect.appendChild(opt);
+                    });
+                } else {
+                    driveSelect.innerHTML = '<option value="">🗺️ No maps found in Drive</option>';
+                    driveSelect.disabled = true;
+                }
+            })
+            .catch(err => console.error("Could not load drive maps", err));
+
+        driveSelect.addEventListener('change', async (e) => {
+            const urlPath = e.target.value;
+
+            if (driveRasterLayer) {
+                map.removeLayer(driveRasterLayer);
+                driveRasterLayer = null;
+            }
+            if (!urlPath) return;
+
+            // Extract filename from path (e.g., /data/gee_exports/map.tif -> map.tif)
+            const filename = urlPath.split('/').pop();
+            const tileUrl = `/api/tiles/${filename}/{z}/{x}/{y}.png`;
+
+            try {
+                // Using standard Leaflet TileLayer for massive performance boost
+                // Only loads tiles for the current screen
+                driveRasterLayer = L.tileLayer(tileUrl, {
+                    opacity: 0.8,
+                    maxZoom: 24,
+                    maxNativeZoom: 18, // Backend reprojects on the fly
+                    attribution: `Local Drive Index: ${filename}`
+                });
+
+                driveRasterLayer.addTo(map);
+
+                // Optionally center the map if it's a new layer
+                // (Since we don't have bounds in the tile URL, we rely on the user knowing the area 
+                // or we can add a bounds endpoint later if needed)
+                console.log("Tiled layer added:", tileUrl);
+            } catch (error) {
+                console.error("Tiled rendering failed:", error);
+                alert("Failed to load the tiled map from backend.");
+            }
+        });
+    }
+    // ─── Protected Zones (National Parks) Loading ───
+    async function loadProtectedZones() {
+        try {
+            const response = await fetch('data/Binga Parks.kmz');
+            if (!response.ok) return;
+            const arrayBuffer = await response.arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+            const kmlText = await zip.file(kmlFile).async("string");
+            const parser = new DOMParser();
+            const kml = parser.parseFromString(kmlText, "text/xml");
+            const geojson = toGeoJSON.kml(kml);
+            L.geoJSON(geojson, {
+                style: { color: '#f97316', weight: 2, fillColor: '#ef4444', fillOpacity: 0.25, dashArray: '3, 6' },
+                onEachFeature: (feature, layer) => {
+                    layer.bindTooltip("PROTECTED ZONE: " + (feature.properties.name || "National Park"), { sticky: true, className: 'protected-tooltip' });
+                }
+            }).addTo(map);
+        } catch (err) {}
+    }
+
+    // Call API on Load
+    fetchLiveWeather();
+
+});

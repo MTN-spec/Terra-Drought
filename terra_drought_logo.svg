@@ -1,0 +1,18 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4aa655"/>
+      <stop offset="100%" stop-color="#1c5ea9"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="40" fill="#f5f8fb"/>
+  <path d="M200 40 L300 100 Q330 170 290 255 L200 340 L110 255 Q70 170 100 100 Z"
+        fill="url(#grad)" stroke="#ffffff" stroke-width="10"/>
+  <path d="M200 120 C178 160 150 170 130 220 C160 210 180 200 200 210 C222 200 240 190 270 210 C255 170 230 160 210 120"
+        fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+  <path d="M200 100 L200 170" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+  <line x1="120" y1="280" x2="280" y2="280" stroke="#ffffff" stroke-width="8" opacity="0.65"/>
+  <text x="200" y="360" font-family="Verdana, sans-serif" font-size="36" fill="#1c5ea9" text-anchor="middle">
+    Terra Drought
+  </text>
+</svg>

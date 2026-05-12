@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Terra Drought — Hybrid Drought Prediction System for Binga District using GEE and Machine Learning">
+    <title>Terra Drought | Hybrid Prediction System</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <!-- File Parsing Libraries for AOI Upload -->
+    <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+
+    <!-- GeoRaster for TIFF Support -->
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- ===== LOGIN OVERLAY ===== -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">🛡️</div>
+            <h1 class="login-title">Terra Drought</h1>
+            <p class="login-subtitle">Hybrid Drought Prediction System</p>
+            
+            <div class="login-badge">
+                <i data-lucide="user-check" style="width:14px;height:14px"></i>
+                Authorized Admin Personnel Only
+            </div>
+
+            <div class="login-form">
+                <div class="input-group">
+                    <label>Admin Name</label>
+                    <input type="text" id="login-user" class="login-input" value="Takunda Nigel Mhandu" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="login-pass" class="login-input" placeholder="Enter administrative password">
+                </div>
+                <div id="login-error" class="login-error">Incorrect password. Access denied.</div>
+                <button id="login-btn" class="login-btn">Secure Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LEFT ICON SIDEBAR ===== -->
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-logo" id="sidebar-logo">
+            <span class="logo-icon">🛡️</span>
+            <span class="logo-text">TERRA</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-btn active" data-tooltip="Dashboard" data-panel="none" id="nav-dashboard">
+                <i data-lucide="layout-dashboard"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="My Fields" data-panel="fields" id="nav-fields">
+                <i data-lucide="map-pin"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Draw AOI" data-panel="none" id="nav-draw">
+                <i data-lucide="pentagon"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Satellite Layers" data-panel="none" id="nav-layers">
+                <i data-lucide="layers"></i>
+            </button>
+
+            <div class="nav-divider"></div>
+
+            <button class="nav-btn" data-tooltip="Drought Forecast" data-panel="claims" id="nav-claims">
+                <i data-lucide="trending-up"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Weather Data" data-panel="weather" id="nav-weather">
+                <i data-lucide="cloud-rain"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Analytics" data-panel="analytics" id="nav-analytics">
+                <i data-lucide="bar-chart-3"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Reports" data-panel="none" id="nav-reports">
+                <i data-lucide="file-text"></i>
+            </button>
+
+            <div class="nav-divider"></div>
+
+            <button class="nav-btn" data-tooltip="Notifications" data-panel="notifications" id="nav-notifications">
+                <i data-lucide="bell"></i>
+                <span class="notification-badge">3</span>
+            </button>
+            <button class="nav-btn" data-tooltip="Share" data-panel="none" id="nav-share">
+                <i data-lucide="share-2"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Drought Indices" data-panel="none" onclick="window.open('https://ee-mhandutakunda.projects.earthengine.app/view/terra-drought---binga', '_blank')" style="color:#60a5fa">
+                <i data-lucide="cloud"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Irrigation Monitoring" data-panel="none" onclick="window.open('https://ee-mhandutakunda.projects.earthengine.app/view/terra-drought-irrigation', '_blank')" style="color:#38bdf8">
+                <i data-lucide="droplets"></i>
+            </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <button class="nav-btn" data-tooltip="Settings" data-panel="none" id="nav-settings">
+                <i data-lucide="settings"></i>
+            </button>
+            <button class="nav-btn" data-tooltip="Help" data-panel="none" id="nav-help">
+                <i data-lucide="help-circle"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== TOP BAR ===== -->
+    <header id="topbar" class="topbar">
+        <div class="topbar-left">
+            <div class="search-box" id="search-box">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" placeholder="Search location, coordinates, field name..." id="search-input">
+            </div>
+            <button class="aoi-btn" id="aoi-upload-btn">
+                <i data-lucide="upload" style="width:14px;height:14px"></i>
+                Upload Area of Interest (AOI)
+            </button>
+            <input type="file" id="aoi-file-input" accept=".kml,.kmz,.shp,.zip" style="display: none;">
+            
+            <select id="drive-image-select" style="margin-left: 10px; background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 6px 12px; border-radius: 4px; font-size: 13px; outline: none; cursor: pointer;">
+                <option value="">🌍 Drive Overlay: None</option>
+            </select>
+        </div>
+        <div class="topbar-center">
+            <div class="imagery-quota">
+                <span class="quota-label">Sentinel-2 Coverage</span>
+                <div class="quota-bar">
+                    <div class="quota-fill" style="width: 72%"></div>
+                </div>
+                <span class="quota-value">72%</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="user-region">
+                <i data-lucide="map" style="width:14px;height:14px"></i>
+                <span>Matabeleland North, Zimbabwe</span>
+            </div>
+            <div class="user-avatar" id="user-avatar">
+                <span>MT</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MAP CONTAINER ===== -->
+    <main id="map-container" class="map-container">
+        <div id="map" class="map"></div>
+
+        <!-- Map Controls Overlay -->
+        <div class="map-controls" id="map-controls">
+            <button class="map-ctrl-btn" id="zoom-in" data-tooltip-left="Zoom In">
+                <i data-lucide="plus"></i>
+            </button>
+            <button class="map-ctrl-btn" id="zoom-out" data-tooltip-left="Zoom Out">
+                <i data-lucide="minus"></i>
+            </button>
+            <div class="map-ctrl-divider"></div>
+            <button class="map-ctrl-btn" id="locate-me" data-tooltip-left="My Location">
+                <i data-lucide="crosshair"></i>
+            </button>
+            <button class="map-ctrl-btn" id="fullscreen" data-tooltip-left="Fullscreen">
+                <i data-lucide="maximize-2"></i>
+            </button>
+        </div>
+
+        <!-- Map Info Overlay (bottom-left) -->
+        <div class="map-info" id="map-info">
+            <span id="coords">-18.3°S, 27.5°E</span>
+            <span class="separator">|</span>
+            <span id="zoom-level">Zoom: 10</span>
+            <span class="separator">|</span>
+            <span id="scale">50 km</span>
+        </div>
+
+        <!-- Active Index Badge -->
+        <div class="active-index-badge" id="active-index-badge">
+            <div class="index-color-swatch" style="background: linear-gradient(90deg, #d73027, #fee08b, #1a9850)"></div>
+            <span>NDVI</span>
+            <span class="index-range">-1.0 — 1.0</span>
+        </div>
+    </main>
+
+    <!-- ===== RIGHT PANEL ===== -->
+    <aside id="right-panel" class="right-panel">
+        <div class="panel-header">
+            <h2 id="panel-title">MONITORED FARMS</h2>
+            <button class="panel-close" id="panel-close">
+                <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Fields Panel Content -->
+        <div class="panel-content" id="panel-fields">
+            <div class="panel-filters">
+                <button class="filter-chip active" data-filter="all">All</button>
+                <button class="filter-chip" data-filter="active">Active</button>
+                <button class="filter-chip" data-filter="alert">Moderate</button>
+                <button class="filter-chip" data-filter="triggered">Severe</button>
+            </div>
+            <!-- Dynamic fields go here -->
+        </div>
+
+        <!-- Claims Panel Content (hidden by default) -->
+        <div class="panel-content hidden" id="panel-claims">
+            <div class="claims-summary">
+                <div class="claim-stat">
+                    <span class="claim-stat-value" id="stat-monitored">--</span>
+                    <span class="claim-stat-label">Farms Monitored</span>
+                </div>
+                <div class="claim-stat">
+                    <span class="claim-stat-value triggered" id="stat-severe">--</span>
+                    <span class="claim-stat-label">Severe Risk</span>
+                </div>
+                <div class="claim-stat">
+                    <span class="claim-stat-value warning" id="stat-forecast">--</span>
+                    <span class="claim-stat-label">Forecasted High Risk</span>
+                </div>
+            </div>
+            <div class="claims-timeline" id="forecast-container">
+                <h3>3-Month ML Forecast</h3>
+                <div id="forecast-list">
+                    <!-- Dynamic forecast items -->
+                    <p style="color: #94a3b8; font-size: 13px;">Loading hybrid prediction model data...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weather Panel Content (hidden by default) -->
+        <div class="panel-content hidden" id="panel-weather">
+            <h3 class="weather-title">Climate Conditions</h3>
+            <div class="weather-current">
+                <div class="weather-icon-large" id="w-icon">📡</div>
+                <div class="weather-temp">
+                    <span class="temp-value" id="w-temp">--</span>
+                    <span class="temp-unit">C</span>
+                </div>
+                <span class="weather-desc" id="w-desc">Fetching Live Data...</span>
+                <span class="weather-location" id="w-loc">Chinhoyi Region (Open-Meteo API)</span>
+            </div>
+            <div class="weather-grid">
+                <div class="weather-stat">
+                    <i data-lucide="droplets" style="width:16px;height:16px;color:#60a5fa"></i>
+                    <span class="stat-label">Precipitation</span>
+                    <span class="stat-value" id="w-precip">-- mm</span>
+                    <span class="stat-normal">Current</span>
+                </div>
+                <div class="weather-stat">
+                    <i data-lucide="wind" style="width:16px;height:16px;color:#f87171"></i>
+                    <span class="stat-label">Wind Speed</span>
+                    <span class="stat-value" id="w-wind">-- km/h</span>
+                    <span class="stat-normal">Current</span>
+                </div>
+                <div class="weather-stat">
+                    <i data-lucide="activity" style="width:16px;height:16px;color:#a78bfa"></i>
+                    <span class="stat-label">Soil Moisture</span>
+                    <span class="stat-value" id="w-soil">-- m³/m³</span>
+                    <span class="stat-normal">Top 1cm</span>
+                </div>
+                <div class="weather-stat">
+                    <i data-lucide="sun" style="width:16px;height:16px;color:#fbbf24"></i>
+                    <span class="stat-label">Evapotranspiration</span>
+                    <span class="stat-value" id="w-et0">-- mm/d</span>
+                    <span class="stat-normal">FAO Ref</span>
+                </div>
+            </div>
+            <div class="drought-index">
+                <h4>Drought Severity Index (SPI)</h4>
+                <div class="spi-bar">
+                    <div class="spi-marker" style="left: 18%"></div>
+                    <div class="spi-gradient"></div>
+                </div>
+                <div class="spi-labels">
+                    <span>Extreme</span>
+                    <span>Severe</span>
+                    <span>Moderate</span>
+                    <span>Normal</span>
+                    <span>Wet</span>
+                </div>
+                <p class="spi-reading">Current SPI: <strong>-1.72</strong> (Severe Drought)</p>
+            </div>
+        </div>
+
+        <!-- Analytics Panel Content (hidden by default) -->
+        <div class="panel-content hidden" id="panel-analytics">
+            <h3>Portfolio Analytics</h3>
+            <div class="analytics-cards">
+                <div class="analytics-card">
+                    <span class="analytics-label">Avg Regional VHI</span>
+                    <span class="analytics-value" id="avg-vhi">--</span>
+                    <span class="analytics-trend" id="vhi-status">Historical baseline: 52.4</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-label">Drought Duration</span>
+                    <span class="analytics-value" id="drought-months">--</span>
+                    <span class="analytics-trend">Consecutive months below norm</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-label">Binga Coverage</span>
+                    <span class="analytics-value">100%</span>
+                    <span class="analytics-trend up">District-wide spatial sync</span>
+                </div>
+                <div class="analytics-card">
+                    <span class="analytics-label">Prediction Accuracy</span>
+                    <span class="analytics-value">89.2%</span>
+                    <span class="analytics-trend up">Random Forest R² Score</span>
+                </div>
+            </div>
+            <div class="ndvi-timeline-chart">
+                <h4>NDVI Trend (Portfolio Average)</h4>
+                <div class="mini-chart" id="ndvi-chart">
+                    <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="ndviGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+                                <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M0,30 Q30,25 60,28 T120,35 T180,50 T240,65 T300,72" fill="none" stroke="#10b981" stroke-width="2"/>
+                        <path d="M0,30 Q30,25 60,28 T120,35 T180,50 T240,65 T300,72 L300,100 L0,100 Z" fill="url(#ndviGrad)"/>
+                        <!-- Trigger threshold line -->
+                        <line x1="0" y1="75" x2="300" y2="75" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,4" opacity="0.6"/>
+                        <text x="250" y="72" font-size="8" fill="#ef4444" font-family="Inter">Trigger</text>
+                    </svg>
+                    <div class="chart-labels">
+                        <span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Panel Content (hidden by default) -->
+        <div class="panel-content hidden" id="panel-notifications">
+            <h3>Notifications</h3>
+            <div class="notif-list">
+                <div class="notif-item urgent">
+                    <div class="notif-icon">🔴</div>
+                    <div class="notif-body">
+                        <strong>CRITICAL DROUGHT</strong>
+                        <p>Binga South — Hybrid index dropped below 30. Immediate intervention recommended.</p>
+                        <span class="notif-time">2 hours ago</span>
+                    </div>
+                </div>
+                <div class="notif-item warning">
+                    <div class="notif-icon">⚠️</div>
+                    <div class="notif-body">
+                        <strong>Threshold Warning</strong>
+                        <p>Lupane Maize Plot A approaching NDVI trigger (0.21)</p>
+                        <span class="notif-time">6 hours ago</span>
+                    </div>
+                </div>
+                <div class="notif-item info">
+                    <div class="notif-icon">🛰️</div>
+                    <div class="notif-body">
+                        <strong>New Imagery Available</strong>
+                        <p>Sentinel-2 pass over Binga District — 4 fields updated</p>
+                        <span class="notif-time">1 day ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== BOTTOM LAYERS PANEL ===== -->
+    <div id="bottom-panel" class="bottom-panel">
+        <div class="layers-tabs">
+            <button class="layer-tab active" data-tab="all">ALL LAYERS</button>
+            <button class="layer-tab" data-tab="agriculture">AGRICULTURE</button>
+            <button class="layer-tab" data-tab="climate">CLIMATE</button>
+            <button class="layer-tab" data-tab="insurance">INSURANCE</button>
+        </div>
+        <button class="layers-toggle" id="layers-toggle">
+            <span>Hide</span>
+            <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
+        </button>
+        <div class="layers-scroll" id="layers-scroll">
+            <div class="layer-card active" data-layer="ndvi" data-category="agriculture">
+                <div class="layer-thumb ndvi-thumb"></div>
+                <span class="layer-name">NDVI</span>
+                <span class="layer-desc">Vegetation health & cover</span>
+            </div>
+            <div class="layer-card" data-layer="ndwi" data-category="agriculture">
+                <div class="layer-thumb ndwi-thumb"></div>
+                <span class="layer-name">NDWI</span>
+                <span class="layer-desc">Water stress index</span>
+            </div>
+            <div class="layer-card" data-layer="vci" data-category="agriculture">
+                <div class="layer-thumb vci-thumb"></div>
+                <span class="layer-name">VCI</span>
+                <span class="layer-desc">Vegetation condition</span>
+            </div>
+            <div class="layer-card" data-layer="evi" data-category="agriculture">
+                <div class="layer-thumb evi-thumb"></div>
+                <span class="layer-name">EVI</span>
+                <span class="layer-desc">Enhanced vegetation</span>
+            </div>
+            <div class="layer-card" data-layer="smi" data-category="climate">
+                <div class="layer-thumb smi-thumb"></div>
+                <span class="layer-name">SMI</span>
+                <span class="layer-desc">Soil moisture index</span>
+            </div>
+            <div class="layer-card" data-layer="lst" data-category="climate">
+                <div class="layer-thumb lst-thumb"></div>
+                <span class="layer-name">LST</span>
+                <span class="layer-desc">Land surface temp</span>
+            </div>
+            <div class="layer-card" data-layer="rainfall" data-category="climate">
+                <div class="layer-thumb rainfall-thumb"></div>
+                <span class="layer-name">Rainfall</span>
+                <span class="layer-desc">CHIRPS precip anomaly</span>
+            </div>
+            <div class="layer-card" data-layer="risk" data-category="insurance">
+                <div class="layer-thumb risk-thumb"></div>
+                <span class="layer-name">Hybrid Risk</span>
+                <span class="layer-desc">ML Predicted Vulnerability</span>
+            </div>
+            <div class="layer-card" data-layer="truecolor" data-category="all">
+                <div class="layer-thumb truecolor-thumb"></div>
+                <span class="layer-name">True Color</span>
+                <span class="layer-desc">Natural RGB composite</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script src="app.js"></script>
+</body>
+</html>

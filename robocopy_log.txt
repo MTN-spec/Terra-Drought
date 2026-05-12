@@ -1,0 +1,52 @@
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : Friday, 24 April, 2026 11:35:00
+   Source : C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\
+     Dest = F:\MTN - Main Desktop\Privy  - Agricultural Drought\src\
+
+    Files : *.*
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /MT:8 /R:3 /W:5 
+
+------------------------------------------------------------------------------
+
+	    New File  		    2936	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\agri_shield\api.py100%  
+	    New File  		    2868	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\agri_shield\indices.py100%  
+	    New File  		    3273	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\agri_shield\model.py100%  
+	    New File  		   49230	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\app.js100%  
+	    New File  		   23167	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\index.html100%  
+	    New File  		     347	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\start_server.py100%  
+	    New File  		   38354	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\styles.css100%  
+	    New File  		    6328	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\pitch\index.html100%  
+	    New File  		    4314	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\pitch\presentation.css100%  
+	    New File  		  140019	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\farmer_db.json100%  
+	    New File  		   55003	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\AgriShield_Farmer_Stats.csv100%  
+	    New File  		  40.4 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\cumulative_risk.tif 17%   24%   32%   34%   37%   42%   44%   46%   51%   54%   61%   64%   66%   74%   84%   86%   93%   96%  100%  
+	    New File  		 501.0 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\economic_scenario.tif 10%   11%   12%   13%   14%   15%   16%   17%   18%   19%   20%   21%   22%   23%   24%   25%   26%   27%   28%   29%   30%   31%   32%   33%   34%   35%   36%   37%   38%   39%   40%   41%   42%   43%   44%   45%   46%   47%   48%   49%   50%   51%   52%   53%   54%   55%   56%   57%   58%   59%   60%   61%   62%   63%   64%   65%   66%   67%   68%   69%   70%   71%   72%   73%   74%   75%   76%   77%   78%   79%   80%   81%   82%   83%   84%   85%   86%   87%   88%   89%   90%   91%   92%   93%   94%   95%   96%   97%   98%   99%  100%  
+	    New File  		  26.6 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\LULC_Mberengwa_Insiza_Zvishavane_5Class.tif100%  
+	    New File  		   97443	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\ndvi_timeseries.csv100%  
+	    New File  		 500.5 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\suitability_map.tif 99%  100%  
+	    New File  		 502.2 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\sustainability_scenario.tif100%  
+	    New File  		  51.1 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\umzingwane_distance_river.tif100%  
+	    New File  		  879025	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\umzingwane_mining_density_2020.tif100%  
+	    New File  		  586285	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\umzingwane_mining_density_change.tif100%  
+	    New File  		  16.1 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\umzingwane_slope.tif100%  
+	    New File  		 404.6 m	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\umzingwane_yearly_ndvi.tif100%  
+	    New File  		  148598	C:\Users\MTN\OneDrive\Desktop\MTN\ZITF - Project\ZITF - ZB hackathon\src\dashboard\data\gee_exports\ZIM_MODIS_LandCover_500m_Aligned.tif100%  
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :         6         6         0         0         0         0
+   Files :        23        23         0         0         0         0
+   Bytes :   1.996 g   1.996 g         0         0         0         0
+   Times :   0:08:42   0:01:18                       0:00:00   0:00:17
+
+
+   Speed :           27,413,138 Bytes/sec.
+   Speed :            1,568.592 MegaBytes/min.
+   Ended : Friday, 24 April, 2026 11:36:36
+
