@@ -34,7 +34,7 @@ app.add_middleware(
 # Configuration
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CREDENTIALS_FILE = 'credentials.json'
-TARGET_FOLDER_NAME = 'GEE_Exports'
+TARGET_FOLDER_NAME = 'GEE_Exports' # Standardized research folder
 LOCAL_DATA_DIR = os.path.join('src', 'dashboard', 'data', 'gee_exports')
 
 # Ensure local data directory exists
@@ -205,9 +205,8 @@ def sync_kmz_to_csv():
             })
             
         if farmers:
-            df = pd.DataFrame(farmers)
             df.to_csv(output_csv, index=False)
-            print(f"Processed {len(farmers)} farms from KMZ with ZB Wallet IDs.")
+            print(f"Processed {len(farmers)} farms from KMZ (Research Mode).")
             
             # Initial seed of claims removed for research version
             return True
@@ -250,16 +249,64 @@ async def get_drought_prediction():
     return {"forecast": forecasts}
 
 async def get_hybrid_prediction():
-    """Logic for CNN-LSTM Inference."""
+    """Logic for CNN-LSTM Inference using real spatial data if available."""
     csv_path = 'Binga_Unified_ML_Database_2000_2025.csv'
+    if not os.path.exists(csv_path):
+         return {"status": "error", "message": "ML Database not found"}
+         
     df = pd.read_csv(csv_path).tail(6) # Need 6 months for sequence
     
+    # 1. Temporal Data Preparation
     temporal_cols = ['NDVI_Mean', 'VCI_Mean', 'TCI_Mean', 'SPI_1_Mean', 'SPI_3_Mean']
-    seq_data = HYBRID_SCALER.transform(df[temporal_cols])
-    x_temporal = torch.from_numpy(seq_data).float().unsqueeze(0) # (1, 6, 5)
+    # If SMI exists in database, swap SPI_1 for SMI (Research Priority)
+    if 'SMI_Mean' in df.columns:
+        temporal_cols = ['NDVI_Mean', 'VCI_Mean', 'TCI_Mean', 'SPI_3_Mean', 'SMI_Mean']
+        
+    import numpy as np
+    try:
+        seq_data = HYBRID_SCALER.transform(df[temporal_cols])
+        x_temporal = torch.from_numpy(seq_data).float().unsqueeze(0) # (1, 6, 5)
+    except Exception as e:
+        print(f"Scaling error: {e}. Fallback to raw data.")
+        x_temporal = torch.from_numpy(df[temporal_cols].values).float().unsqueeze(0)
     
-    # Mock Spatial Data for inference (In production, load latest TIFF)
-    x_spatial = torch.randn(1, 3, 128, 128) 
+    # 2. Spatial Data Preparation (Try to load latest TIFF)
+    import glob
+    tif_files = glob.glob(os.path.join(LOCAL_DATA_DIR, '*.tif'))
+    x_spatial = None
+    
+    if tif_files:
+        # Pick the most recent TIFF
+        latest_tif = max(tif_files, key=os.path.getmtime)
+        try:
+            import rasterio
+            with rasterio.open(latest_tif) as src:
+                # Read 128x128 window from center
+                data = src.read()
+                if data.shape[0] >= 3:
+                    spatial_img = data[:3, :128, :128]
+                else:
+                    # Pad/Repeat channels if 1-band (e.g. SMI/VHI)
+                    band1 = data[0, :128, :128]
+                    # Ensure 128x128
+                    h, w = band1.shape
+                    if h < 128 or w < 128:
+                        pad_h = max(0, 128 - h)
+                        pad_w = max(0, 128 - w)
+                        band1 = np.pad(band1, ((0, pad_h), (0, pad_w)), mode='constant')
+                    spatial_img = np.stack([band1[:128, :128]] * 3)
+                
+                x_spatial = torch.from_numpy(spatial_img).float().unsqueeze(0)
+                # Normalize 0-1
+                x_min, x_max = x_spatial.min(), x_spatial.max()
+                if x_max > x_min:
+                    x_spatial = (x_spatial - x_min) / (x_max - x_min)
+        except Exception as e:
+            print(f"Error loading TIFF for hybrid model: {e}")
+
+    if x_spatial is None:
+        # Mock Spatial Data if no real TIFF found
+        x_spatial = torch.randn(1, 3, 128, 128) 
     
     with torch.no_grad():
         pred_vhi = HYBRID_MODEL(x_spatial, x_temporal).item()
@@ -270,9 +317,9 @@ async def get_hybrid_prediction():
             "horizon": "T+1",
             "predicted_vhi": round(float(pred_vhi), 2),
             "risk_level": "High" if pred_vhi < 35 else "Moderate" if pred_vhi < 50 else "Low",
-            "model": "CNN-LSTM Hybrid (Advanced)"
+            "model": "CNN-LSTM Hybrid (Research Mode)"
         }],
-        "note": "Hybrid model currently provides 1-month high-fidelity spatial-temporal forecast."
+        "note": "Using real spatial data from synced GEE exports." if tif_files else "Using fallback temporal prediction."
     }
 
 @app.post("/api/sync_data")

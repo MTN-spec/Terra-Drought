@@ -16,12 +16,27 @@ def merge_and_link_system():
 
     # A. LOAD MASTER TIME-SERIES (From our new GEE Master Engine)
     gee_master_files = glob.glob(os.path.join(GEE_DATA_DIR, "TerraDrought_Binga_Master_Database*.csv"))
+    smi_files = glob.glob(os.path.join(GEE_DATA_DIR, "Binga_FLDAS_SMI_*.csv"))
     
     if not gee_master_files:
         print(f"❌ Error: Could not find Master Database in {GEE_DATA_DIR}")
         return
 
     df_master = pd.read_csv(gee_master_files[0])
+    
+    # B. MERGE SMI DATA (Research Improvement)
+    if smi_files:
+        print(f"📡 Found SMI Data: {os.path.basename(smi_files[0])}")
+        df_smi = pd.read_csv(smi_files[0])
+        # Standardize Date format if necessary
+        df_smi['Date'] = df_smi['Date'].str.replace('_', '-')
+        
+        # Merge on Date
+        df_master = pd.merge(df_master, df_smi[['Date', 'SMI_Mean']], on='Date', how='left')
+        print(f"✅ Merged SMI_Mean into master database.")
+    else:
+        print("⚠️ Warning: No SMI data found to merge.")
+
     df_master = df_master.sort_values(by='Date').reset_index(drop=True)
     
     print(f"✅ Loaded Master Time-Series with {len(df_master)} monthly records.")
@@ -49,11 +64,14 @@ def merge_and_link_system():
         # Calculate Predicted Risk Score (1=Severe to 4=Healthy)
         vhi = latest_indices.get('VHI', 50)
         rai = latest_indices.get('RAI', 0)
+        smi = latest_indices.get('SMI_Mean', vhi) # Fallback to VHI if SMI not present
         
-        # Simple logical trigger for "Predicted_Risk"
-        if vhi < 15 or rai < -2.0: risk = 1
-        elif vhi < 35 or rai < -1.0: risk = 2
-        elif vhi < 55 or rai < -0.5: risk = 3
+        # Research-based risk formula: weighted average of VHI and SMI
+        risk_score = (0.6 * vhi) + (0.4 * smi)
+        
+        if risk_score < 20 or rai < -2.0: risk = 1
+        elif risk_score < 40 or rai < -1.0: risk = 2
+        elif risk_score < 60 or rai < -0.5: risk = 3
         else: risk = 4
         
         record = {
@@ -61,6 +79,7 @@ def merge_and_link_system():
             "Predicted_Risk": risk,
             "NDVI": latest_indices.get('NDVI', 0),
             "VHI": latest_indices.get('VHI', 0),
+            "SMI": latest_indices.get('SMI_Mean', 0),
             "RAI": latest_indices.get('RAI', 0),
             "crop": f["crop"],
             "zb_mobile": f"2637{random.randint(71000000, 78999999)}",
