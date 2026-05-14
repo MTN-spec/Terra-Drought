@@ -300,14 +300,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const forecastList = document.getElementById('forecast-list');
         if (!forecastList) return;
 
+        console.log("Loading predictions from:", API_BASE_URL + '/api/predict');
         fetch(API_BASE_URL + '/api/predict')
             .then(res => res.json())
             .then(data => {
                 forecastList.innerHTML = '';
                 if (data.status === 'error') {
-                    forecastList.innerHTML = `<p style="color:#ef4444">${data.message}</p>`;
+                    forecastList.innerHTML = `<div class="error-msg" style="color:#f87171; padding:15px; background:rgba(239,68,68,0.1); border-radius:8px; font-size:13px;">
+                        <strong>⚠️ API Offline / Model Error</strong><br>${data.message}
+                    </div>`;
                     return;
                 }
+
+                // Add a "Hybrid Model Status" header
+                const header = document.createElement('div');
+                header.style.marginBottom = '15px';
+                header.innerHTML = `<div style="background:rgba(59,130,246,0.1); border:1px solid #3b82f6; padding:10px; border-radius:6px;">
+                    <span style="color:#60a5fa; font-weight:700; font-size:11px; text-transform:uppercase;">Model Status</span>
+                    <p style="margin:5px 0 0; font-size:12px; color:#e8ecf1;">${data.note || "CNN-LSTM Spatiotemporal Analysis Active"}</p>
+                </div>`;
+                forecastList.appendChild(header);
 
                 data.forecast.forEach(item => {
                     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -708,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update badge safely
             const indexBadge = document.getElementById('active-index-badge');
-            if (indexBadge && typeof indexRanges !== 'undefined' && typeof indexGradients !== 'undefined') {
+            if (indexBadge) {
                 indexBadge.querySelector('span:first-of-type').textContent = name;
                 indexBadge.querySelector('.index-range').textContent = indexRanges[layer] || '';
                 indexBadge.querySelector('.index-color-swatch').style.background = indexGradients[layer] || '';
@@ -721,12 +733,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (activeLayerKey === layer) {
-                // Clicking same layer again = toggle off
                 activeLayerKey = null;
-            } else if (satelliteLayers[layer]) {
+                return;
+            }
+
+            // PRIORITIZE LOCAL DATA: If we have a synced GEE map for this category, use it
+            if (layer === 'risk' || layer === 'smi' || layer === 'ndvi') {
+                const driveSelect = document.getElementById('drive-image-select');
+                // Check if there's an option in the drive dropdown that matches this layer name
+                const matchingOpt = Array.from(driveSelect.options).find(opt => 
+                    opt.textContent.toLowerCase().includes(layer.toLowerCase())
+                );
+                
+                if (matchingOpt) {
+                    console.log(`Using local research data for ${layer}:`, matchingOpt.value);
+                    driveSelect.value = matchingOpt.value;
+                    driveSelect.dispatchEvent(new Event('change'));
+                    activeLayerKey = layer;
+                    return;
+                }
+            }
+
+            // Fallback to NASA/EOX Global Services if no local map found
+            if (satelliteLayers[layer]) {
                 activeOverlay = satelliteLayers[layer];
                 map.addLayer(activeOverlay);
                 activeLayerKey = layer;
+            } else {
+                console.warn(`Layer ${layer} not found in local sync or global providers.`);
             }
         });
     });
