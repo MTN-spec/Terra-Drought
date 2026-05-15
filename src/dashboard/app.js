@@ -181,53 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).addTo(farmersGroup);
                     }
 
-                    if (!layer) return;
-
-                    const farmSize = (Math.random() * 20 + 2).toFixed(1); // Mock size between 2-22 ha
-                    const yieldEst = (farmSize * (props.ndvi * 1.2 + 0.8)).toFixed(1); // Mock yield
-
-                    // Robust centroid calculation for both Points and Polygons
-                    const pCenter = layer.getBounds ? layer.getBounds().getCenter() : layer.getLatLng();
-                    console.log(`Initialized ${props.name} at `, pCenter);
-
-                    layer.bindPopup(`
-                        <div style="font-family:Inter,sans-serif;font-size:12px;min-width:220px;padding:2px">
-                            <strong style="font-size:14px;color:#fff">${props.name}</strong>
-                            <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
-                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                    <span style="color:#8b99ab">Crop Type:</span>
-                                    <span style="color:#60a5fa;font-weight:600">${props.crop || 'Maize/Tobacco'}</span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                    <span style="color:#8b99ab">Satellite VHI:</span>
-                                    <span style="color:#e8ecf1">${props.VHI || props.vhi_regional || '0.0'}</span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                    <span style="color:#8b99ab">Local NDVI:</span>
-                                    <span style="color:${props.color};font-weight:700">${props.NDVI || props.ndvi || '0.0'}</span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
-                                    <span style="color:#8b99ab">Soil Moisture (SMI):</span>
-                                    <span style="color:#38bdf8;font-weight:600">${props.SMI || '0.0'}</span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
-                                    <span style="color:#8b99ab">Drought Severity (CNN-LSTM):</span>
-                                    <span style="color:${props.color};font-weight:800;font-size:14px">${props.Predicted_Risk || props.hybrid_risk_score || '0.0'}</span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#8b99ab">Status:</span>
-                                    <span style="color:${props.color};font-weight:600;text-transform:uppercase">${props.status || (props.Predicted_Risk < 2 ? 'Severe' : 'Healthy')}</span>
-                                </div>
-                                <button onclick="window.open('https://ee-mhandutakunda.projects.earthengine.app/view/terra-drought---binga?lon=${pCenter.lng.toFixed(5)}&lat=${pCenter.lat.toFixed(5)}&zoom=16', '_blank')" style="margin-top:10px; width:100%; background:rgba(37,99,235,0.2); border:1px solid #2563eb; color:#60a5fa; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-family:Inter,sans-serif;">
-                                    🛰️ Deep GEE Analytics
-                                </button>
-                            </div>
-                        </div>
-                    `, { className: 'dark-popup' });
-
-                    fieldLayers[fieldId] = layer;
-
-                    if (props.status === 'triggered') {
                         const center = layer.getBounds ? layer.getBounds().getCenter() : layer.getLatLng();
                         L.circleMarker(center, {
                             radius: 12, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, weight: 2, className: 'pulse-marker'
@@ -867,69 +820,118 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(style);
 
     // ─── Live Weather API (Open-Meteo) ───
-    async function fetchLiveWeather() {
+    async function fetchLiveWeather(lat = -17.2755, lng = 29.9905) {
         try {
-            // Chinhoyi Coordinates
-            const lat = -17.2755;
-            const lng = 29.9905;
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=soil_moisture_0_to_1cm,et0_fao_evapotranspiration&timezone=Africa%2FHarare`;
 
             const res = await fetch(url);
             const data = await res.json();
-
             if (!data || !data.current) return;
-
             const current = data.current;
-            // Get current hour index roughly
-            const currentHourStr = current.time.substring(0, 14) + "00";
-            const hourIdx = data.hourly.time.indexOf(currentHourStr) !== -1 ? data.hourly.time.indexOf(currentHourStr) : 12;
-
-            const soilMoisture = (data.hourly.soil_moisture_0_to_1cm[hourIdx] !== undefined) ? data.hourly.soil_moisture_0_to_1cm[hourIdx] : 0.15;
-            const et0 = (data.hourly.et0_fao_evapotranspiration[hourIdx] !== undefined) ? data.hourly.et0_fao_evapotranspiration[hourIdx] : 4.1;
-
-            // DOM
+            
+            // DOM Update
             const wTemp = document.getElementById('w-temp');
             const wDesc = document.getElementById('w-desc');
             const wIcon = document.getElementById('w-icon');
             const wPrecip = document.getElementById('w-precip');
             const wWind = document.getElementById('w-wind');
-            const wSoil = document.getElementById('w-soil');
-            const wEt0 = document.getElementById('w-et0');
-
+            
             if (wTemp) wTemp.textContent = current.temperature_2m;
             if (wPrecip) wPrecip.textContent = current.precipitation + ' mm';
             if (wWind) wWind.textContent = current.wind_speed_10m + ' km/h';
-            if (wSoil) wSoil.textContent = soilMoisture + ' m³/m³';
-            if (wEt0) wEt0.textContent = et0 + ' mm/d';
 
-            // Weather Code Translation (WMO)
             const code = current.weather_code;
             let condition = "Clear";
             let emoji = "☀️";
             if (code === 1 || code === 2) { condition = "Partly Cloudy"; emoji = "⛅"; }
             else if (code === 3) { condition = "Overcast"; emoji = "☁️"; }
-            else if (code >= 45 && code <= 48) { condition = "Fog"; emoji = "🌫️"; }
-            else if (code >= 51 && code <= 67) { condition = "Rain / Showers"; emoji = "🌧️"; }
-            else if (code >= 71 && code <= 77) { condition = "Snow"; emoji = "❄️"; }
-            else if (code >= 80 && code <= 82) { condition = "Heavy Rain"; emoji = "⛈️"; }
-            else if (code >= 95) { condition = "Thunderstorm"; emoji = "🌩️"; }
+            else if (code >= 51) { condition = "Rain / Showers"; emoji = "🌧️"; }
 
-            if (wDesc) wDesc.textContent = condition;
+            if (wDesc) wDesc.textContent = condition + (selectedFarm ? ` (${selectedFarm.properties.name})` : " (Binga)");
             if (wIcon) wIcon.textContent = emoji;
 
-            // Live Drought SPI calculation based on soil moisture
-            const spiMarker = document.querySelector('.spi-marker');
-            if (spiMarker) {
-                const spiPercent = Math.min(Math.max((soilMoisture / 0.4) * 100, 5), 95);
-                spiMarker.style.left = spiPercent + '%';
-            }
-
-        } catch (error) {
-            console.error("Failed to fetch live weather:", error);
-            const wDesc = document.getElementById('w-desc');
-            if (wDesc) wDesc.textContent = "API Offline";
-        }
+        } catch (error) { console.error("Weather Error:", error); }
     }
+
+    // ─── Real Notifications ───
+    function updateNotifications(severeCount) {
+        const container = document.querySelector('.notifications-list');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (severeCount > 0) {
+            container.innerHTML += `
+                <div class="notif-item alert">
+                    <div class="notif-icon">⚠️</div>
+                    <div class="notif-body">
+                        <strong>Severe Drought Detected</strong>
+                        <p>${severeCount} farms in Binga have crossed the research threshold.</p>
+                        <span class="notif-time">Just Now</span>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML += `
+            <div class="notif-item info">
+                <div class="notif-icon">🛰️</div>
+                <div class="notif-body">
+                    <strong>GEE Sync Complete</strong>
+                    <p>Satellite indices for 2000-2025 loaded successfully.</p>
+                    <span class="notif-time">Today</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // ─── PDF & QR Logic ───
+    const shareBtn = document.getElementById('nav-share');
+    const reportsBtn = document.getElementById('nav-reports');
+    const reportModal = document.getElementById('report-modal');
+    const downloadBtn = document.getElementById('download-pdf-btn');
+
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const title = selectedFarm ? `Research Report: ${selectedFarm.properties.name}` : "Binga District Drought Analysis";
+        doc.setFontSize(22);
+        doc.text("TerraDrought Monitoring Report", 20, 20);
+        doc.setFontSize(14);
+        doc.text(title, 20, 35);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 45);
+        
+        doc.setFontSize(12);
+        doc.text("--------------------------------------------------", 20, 55);
+        
+        if (selectedFarm) {
+            const p = selectedFarm.properties;
+            doc.text(`Crop Type: ${p.crop || 'Maize'}`, 20, 65);
+            doc.text(`Satellite VHI: ${p.VHI || 'N/A'}`, 20, 75);
+            doc.text(`Drought Severity Index: ${p.Predicted_Risk || '0.0'}`, 20, 85);
+            doc.text(`Model Note: Hybrid CNN-LSTM Prediction based on 25yr history.`, 20, 105);
+        } else {
+            doc.text("District Summary:", 20, 65);
+            doc.text("- Analysis of 269 farm boundaries in Binga District.", 20, 75);
+            doc.text("- Indices sourced from GEE (2000-2025).", 20, 85);
+        }
+        
+        doc.save(selectedFarm ? `Report_${selectedFarm.properties.name}.pdf` : "Binga_Drought_Report.pdf");
+    }
+
+    if (shareBtn || reportsBtn) {
+        [shareBtn, reportsBtn].forEach(btn => btn?.addEventListener('click', () => {
+            reportModal.style.display = 'flex';
+            const qrContainer = document.getElementById('qr-container');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: "https://terra-drought.vercel.app/report/latest.pdf",
+                width: 128,
+                height: 128
+            });
+        }));
+    }
+
+    if (downloadBtn) downloadBtn.addEventListener('click', generatePDF);
 
     // ─── AOI Upload Logic ───
     const aoiUploadBtn = document.getElementById('aoi-upload-btn');

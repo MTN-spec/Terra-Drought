@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Terra Drought — Hybrid Drought Prediction System for Binga District using GEE and Machine Learning">
-    <title>Terra Drought | Hybrid Prediction System</title>
+    <!-- Dependencies for PDF and QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <title>TerraDrought | Hybrid Monitoring System</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -368,82 +372,24 @@
                         <span class="notif-time">1 day ago</span>
                     </div>
                 </div>
+           <!-- (Bottom Panel Removed as requested) -->
+    
+    <!-- PDF Report Modal (Hidden by default) -->
+    <div id="report-modal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); justify-content:center; align-items:center;">
+        <div class="modal-content" style="background:#162130; border:1px solid rgba(255,255,255,0.1); padding:30px; border-radius:12px; width:450px; text-align:center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div id="qr-container" style="background:#fff; padding:15px; border-radius:8px; display:inline-block; margin-bottom:20px;">
+                <!-- QR Code will be injected here -->
+            </div>
+            <h3 style="color:#fff; margin-bottom:10px;">Download Research Report</h3>
+            <p style="color:#8b99ab; font-size:14px; margin-bottom:25px;">Scan to download the PDF report directly to your phone, or click the button below.</p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button id="download-pdf-btn" class="aoi-btn" style="background:#2563eb; color:#fff; border:none; padding:12px 24px; border-radius:6px; font-weight:600; cursor:pointer;">
+                    <i data-lucide="download" style="width:16px; height:16px; margin-right:8px;"></i>Download PDF
+                </button>
+                <button onclick="document.getElementById('report-modal').style.display='none'" class="aoi-btn" style="background:transparent; color:#8b99ab; border:1px solid #334155; padding:12px 24px; border-radius:6px; cursor:pointer;">Close</button>
             </div>
         </div>
-    </aside>
-
-    <!-- ===== BOTTOM LAYERS PANEL ===== -->
-    <div id="bottom-panel" class="bottom-panel">
-        <div class="layers-tabs">
-            <button class="layer-tab active" data-tab="all">ALL LAYERS</button>
-            <button class="layer-tab" data-tab="agriculture">AGRICULTURE</button>
-            <button class="layer-tab" data-tab="climate">CLIMATE / RISK</button>
-        </div>
-        <button class="layers-toggle" id="layers-toggle">
-            <span>Hide</span>
-            <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
-        </button>
-        <div class="layers-scroll" id="layers-scroll">
-            <div class="layer-card active" data-layer="ndvi" data-category="agriculture">
-                <div class="layer-thumb ndvi-thumb"></div>
-                <span class="layer-name">NDVI</span>
-                <span class="layer-desc">Vegetation health & cover</span>
-            </div>
-            <div class="layer-card" data-layer="ndwi" data-category="agriculture">
-                <div class="layer-thumb ndwi-thumb"></div>
-                <span class="layer-name">NDWI</span>
-                <span class="layer-desc">Water stress index</span>
-            </div>
-            <div class="layer-card" data-layer="vci" data-category="agriculture">
-                <div class="layer-thumb vci-thumb"></div>
-                <span class="layer-name">VCI</span>
-                <span class="layer-desc">Vegetation condition</span>
-            </div>
-            <div class="layer-card" data-layer="evi" data-category="agriculture">
-                <div class="layer-thumb evi-thumb"></div>
-                <span class="layer-name">EVI</span>
-                <span class="layer-desc">Enhanced vegetation</span>
-            </div>
-            <div class="layer-card" data-layer="smi" data-category="climate">
-                <div class="layer-thumb smi-thumb"></div>
-                <span class="layer-name">SMI</span>
-                <span class="layer-desc">Soil moisture index</span>
-            </div>
-            <div class="layer-card" data-layer="lst" data-category="climate">
-                <div class="layer-thumb lst-thumb"></div>
-                <span class="layer-name">LST</span>
-                <span class="layer-desc">Land surface temp</span>
-            </div>
-            <div class="layer-card" data-layer="vhi" data-category="climate">
-                <div class="layer-thumb vhi-thumb"></div>
-                <span class="layer-name">VHI</span>
-                <span class="layer-desc">Vegetation Health Index</span>
-            </div>
-            <div class="layer-card" data-layer="spi" data-category="climate">
-                <div class="layer-thumb spi-thumb"></div>
-                <span class="layer-name">SPI-3</span>
-                <span class="layer-desc">Standardized Precip (3m)</span>
-            </div>
-            <div class="layer-card" data-layer="rai" data-category="climate">
-                <div class="layer-thumb rai-thumb"></div>
-                <span class="layer-name">RAI</span>
-                <span class="layer-desc">Rainfall Anomaly Index</span>
-            </div>
-            <div class="layer-card" data-layer="rainfall" data-category="climate">
-                <div class="layer-thumb rainfall-thumb"></div>
-                <span class="layer-name">Rainfall</span>
-                <span class="layer-desc">CHIRPS Monthly Anomaly</span>
-            </div>
-            <div class="layer-card" data-layer="risk" data-category="climate">
-                <div class="layer-thumb risk-thumb"></div>
-                <span class="layer-name">Hybrid Risk</span>
-                <span class="layer-desc">CNN-LSTM Research Index</span>
-            </div>
-            <div class="layer-card" data-layer="truecolor" data-category="all">
-                <div class="layer-thumb truecolor-thumb"></div>
-                <span class="layer-name">True Color</span>
-                <span class="layer-desc">Natural RGB composite</span>
-            </div>
+    </div>         </div>
         </div>
     </div>
 
