@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const map = L.map('map', {
         center: [-17.62, 27.33],   // Centered on Binga District
         zoom: 9,
-        maxZoom: 24,
+        minZoom: 8,                // Don't allow zooming out to all of Africa
+        maxZoom: 18,
         zoomControl: false,
         attributionControl: false
     });
@@ -585,24 +586,28 @@ document.addEventListener('DOMContentLoaded', () => {
         'ndvi': '-1.0 — 1.0',
         'ndwi': '-1.0 — 1.0',
         'vci': '0 — 100%',
+        'vhi': '0 — 100%',
+        'spi': '-3.0 — 3.0',
+        'rai': '-4.0 — 4.0',
         'evi': '0.0 — 1.0',
-        'smi': '0.0 — 0.5',
+        'smi': '0.0 — 1.0',
         'lst': '15°C — 45°C',
-        'rainfall': '0 — 20 mm/hr',
-        'risk': 'Low — High',
-        'payout': 'Triggered',
+        'rainfall': '0 — 100mm',
+        'risk': 'Low — Severe',
         'truecolor': 'Natural'
     };
     const indexGradients = {
-        'ndvi': 'linear-gradient(90deg, #d73027, #fee08b, #1a9850)',
-        'ndwi': 'linear-gradient(90deg, #orange, #white, #blue)',
+        'ndvi': 'linear-gradient(90deg, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #a6d96a, #66bd63, #1a9850)',
+        'vhi': 'linear-gradient(90deg, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #a6d96a, #66bd63, #1a9850)',
         'vci': 'linear-gradient(90deg, #800000, #ff0000, #ffff00, #00ff00)',
+        'spi': 'linear-gradient(90deg, #7b3294, #c2a5cf, #f7f7f7, #a6dba0, #008837)',
+        'rai': 'linear-gradient(90deg, #a6611a, #dfc27d, #f5f5f5, #80cdc1, #018571)',
+        'ndwi': 'linear-gradient(90deg, #ff7f00, #ffffff, #0000ff)',
         'evi': 'linear-gradient(90deg, #63300a, #ffff00, #00ff00, #004000)',
-        'smi': 'linear-gradient(90deg, #fef0d9, #fdcc8a, #fc8d59, #d7301f)',
+        'smi': 'linear-gradient(90deg, #ff0000, #ffa500, #ffff00, #008000, #0000ff)',
         'lst': 'linear-gradient(90deg, #313695, #abd9e9, #fee090, #d73027)',
-        'rainfall': 'linear-gradient(90deg, #f7fbff, #6baed6, #08306b)',
-        'risk': 'linear-gradient(90deg, #fee5d9, #fcae91, #fb6a4a, #cb181d)',
-        'payout': 'linear-gradient(90deg, #ffffff, #ff0000)',
+        'rainfall': 'linear-gradient(90deg, #f7fbff, #deebf7, #9ecae1, #4292c6, #084594)',
+        'risk': 'linear-gradient(90deg, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027)',
         'truecolor': 'none'
     };
 
@@ -699,16 +704,20 @@ document.addEventListener('DOMContentLoaded', () => {
         attribution: 'AI Risk Score (MODIS Thermal)'
     });
 
-    // Payout zones — Same thermal layer with higher opacity for triggered zones
-    satelliteLayers['payout'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
-        layers: 'MODIS_Terra_Thermal_Anomalies_Day',
+    // VHI — Standard Research Definition
+    satelliteLayers['vhi'] = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+        layers: 'MODIS_Terra_NDVI_8Day',
         format: 'image/png',
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.7,
         time: '2024-04-10',
         crs: L.CRS.EPSG3857,
-        attribution: 'Triggered Payout Zones'
+        attribution: 'VHI Proxy'
     });
+
+    // SPI/RAI — PLACEHOLDERS (These will be filled by your synced GEE maps)
+    satelliteLayers['spi'] = null;
+    satelliteLayers['rai'] = null;
 
     layerCards.forEach(card => {
         card.addEventListener('click', () => {
