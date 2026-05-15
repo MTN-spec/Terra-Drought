@@ -3,8 +3,8 @@
    ============================================================ */
 
 // --- API Configuration ---
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? '' 
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''
     : 'https://terra-drought-api.onrender.com'; // Replace with your actual Render URL
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const status = props.status; // 'severe', 'moderate', or 'healthy'
                     const thumbClass = status === 'severe' ? 'critical' : (status === 'moderate' ? 'alert' : 'healthy');
-                    
+
                     if (status === 'severe') severeCount++;
                     if (status === 'moderate') moderateCount++;
 
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                     const monthName = monthNames[item.month - 1];
                     const riskClass = item.risk_level === 'High' ? 'triggered' : (item.risk_level === 'Moderate' ? 'warning' : 'healthy');
-                    
+
                     const div = document.createElement('div');
                     div.className = 'timeline-item ' + riskClass;
                     div.innerHTML = `
@@ -754,10 +754,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (layer === 'risk' || layer === 'smi' || layer === 'ndvi') {
                 const driveSelect = document.getElementById('drive-image-select');
                 // Check if there's an option in the drive dropdown that matches this layer name
-                const matchingOpt = Array.from(driveSelect.options).find(opt => 
+                const matchingOpt = Array.from(driveSelect.options).find(opt =>
                     opt.textContent.toLowerCase().includes(layer.toLowerCase())
                 );
-                
+
                 if (matchingOpt) {
                     console.log(`Using local research data for ${layer}:`, matchingOpt.value);
                     driveSelect.value = matchingOpt.value;
@@ -1094,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     layer.bindTooltip("PROTECTED ZONE: " + (feature.properties.name || "National Park"), { sticky: true, className: 'protected-tooltip' });
                 }
             }).addTo(map);
-        } catch (err) {}
+        } catch (err) { }
     }
 
     // Call API on Load
