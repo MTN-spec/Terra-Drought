@@ -195,24 +195,28 @@ document.addEventListener('DOMContentLoaded', () => {
                             <strong style="font-size:14px;color:#fff">${props.name}</strong>
                             <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)">
                                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                    <span style="color:#8b99ab">Crop:</span>
-                                    <span style="color:#60a5fa;font-weight:600">Tobacco</span>
+                                    <span style="color:#8b99ab">Crop Type:</span>
+                                    <span style="color:#60a5fa;font-weight:600">${props.crop || 'Maize/Tobacco'}</span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                    <span style="color:#8b99ab">Regional VHI:</span>
-                                    <span style="color:#e8ecf1">${props.vhi_regional}</span>
+                                    <span style="color:#8b99ab">Satellite VHI:</span>
+                                    <span style="color:#e8ecf1">${props.VHI || props.vhi_regional || '0.0'}</span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
                                     <span style="color:#8b99ab">Local NDVI:</span>
-                                    <span style="color:${props.color};font-weight:700">${props.ndvi}</span>
+                                    <span style="color:${props.color};font-weight:700">${props.NDVI || props.ndvi || '0.0'}</span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
-                                    <span style="color:#8b99ab">Hybrid Risk Score:</span>
-                                    <span style="color:${props.color};font-weight:800;font-size:14px">${props.hybrid_risk_score}</span>
+                                    <span style="color:#8b99ab">Soil Moisture (SMI):</span>
+                                    <span style="color:#38bdf8;font-weight:600">${props.SMI || '0.0'}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+                                    <span style="color:#8b99ab">Drought Severity (CNN-LSTM):</span>
+                                    <span style="color:${props.color};font-weight:800;font-size:14px">${props.Predicted_Risk || props.hybrid_risk_score || '0.0'}</span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#8b99ab">Risk Category:</span>
-                                    <span style="color:${props.color};font-weight:600;text-transform:uppercase">${props.status}</span>
+                                    <span style="color:#8b99ab">Status:</span>
+                                    <span style="color:${props.color};font-weight:600;text-transform:uppercase">${props.status || (props.Predicted_Risk < 2 ? 'Severe' : 'Healthy')}</span>
                                 </div>
                                 <button onclick="window.open('https://ee-mhandutakunda.projects.earthengine.app/view/terra-drought---binga?lon=${pCenter.lng.toFixed(5)}&lat=${pCenter.lat.toFixed(5)}&zoom=16', '_blank')" style="margin-top:10px; width:100%; background:rgba(37,99,235,0.2); border:1px solid #2563eb; color:#60a5fa; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-family:Inter,sans-serif;">
                                     🛰️ Deep GEE Analytics
@@ -258,13 +262,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span style="margin-left:8px">• ${farmSize} ha</span>
                             </div>
                             <div class="field-indices" style="margin-bottom: 6px;">
-                                <span class="idx-pill ${thumbClass}">Score: ${props.hybrid_risk_score}</span>
-                                <span class="idx-pill healthy" style="margin-left:5px">NDVI: ${props.ndvi}</span>
+                                <span class="idx-pill ${thumbClass}">Severity: ${props.Predicted_Risk || props.hybrid_risk_score || '0'}</span>
+                                <span class="idx-pill healthy" style="margin-left:5px">NDVI: ${props.NDVI || props.ndvi || '0'}</span>
                             </div>
                             <div style="padding: 6px; background: rgba(59,130,246,0.05); border-left: 3px solid #3b82f6; border-radius: 4px; margin-top: 5px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-size: 10px; color: #94a3b8; text-transform: uppercase; display: flex; align-items: center;"><i data-lucide="info" style="width:10px; height:10px; margin-right:4px;"></i>Prediction Basis</span>
-                                    <span style="font-size: 11px; font-weight: 600; color: #3b82f6;">Reg. VHI: ${props.vhi_regional}</span>
+                                    <span style="font-size: 11px; font-weight: 600; color: #3b82f6;">SMI: ${props.SMI || '0.0'}</span>
                                 </div>
                             </div>
                         </div>
