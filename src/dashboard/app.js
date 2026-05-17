@@ -185,20 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     L.circleMarker(center, {
                         radius: 12, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, weight: 2, className: 'pulse-marker'
                     }).addTo(farmersGroup);
-                }
 
                     const status = props.status; // 'severe', 'moderate', or 'healthy'
-                const thumbClass = status === 'severe' ? 'critical' : (status === 'moderate' ? 'alert' : 'healthy');
+                    const thumbClass = status === 'severe' ? 'critical' : (status === 'moderate' ? 'alert' : 'healthy');
 
-                if (status === 'severe') severeCount++;
-                if (status === 'moderate') moderateCount++;
+                    if (status === 'severe') severeCount++;
+                    if (status === 'moderate') moderateCount++;
 
-                const nameParts = props.name.trim().split(' ');
-                const initials = nameParts.length > 1
-                    ? (nameParts[0][0] + nameParts[1][0]).toUpperCase()
-                    : props.name.substring(0, 2).toUpperCase();
+                    const nameParts = props.name.trim().split(' ');
+                    const initials = nameParts.length > 1
+                        ? (nameParts[0][0] + nameParts[1][0]).toUpperCase()
+                        : props.name.substring(0, 2).toUpperCase();
 
-                const card = document.createElement('div');
+                    const farmSize = props.farm_size || (Math.random() * 8 + 2).toFixed(1);
+
+                    const card = document.createElement('div');
                 card.className = 'field-card';
                 card.id = fieldId;
                 card.dataset.status = status;

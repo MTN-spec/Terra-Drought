@@ -10,8 +10,6 @@ import os
 import io
 import pandas as pd
 import joblib
-import torch
-from src.ml.hybrid_model import DroughtHybridModel
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -57,6 +55,8 @@ HYBRID_SCALER_PATH = os.path.join('src', 'ml', 'hybrid_scaler.pkl')
 
 def load_hybrid_model():
     if os.path.exists(HYBRID_MODEL_PATH):
+        import torch
+        from src.ml.hybrid_model import DroughtHybridModel
         # Initialize model architecture (temporal_dim=5 for current features)
         model = DroughtHybridModel(temporal_input_dim=5)
         model.load_state_dict(torch.load(HYBRID_MODEL_PATH))
@@ -250,6 +250,7 @@ async def get_drought_prediction():
 
 async def get_hybrid_prediction():
     """Logic for CNN-LSTM Inference using real spatial data if available."""
+    import torch
     csv_path = 'Binga_Unified_ML_Database_2000_2025.csv'
     if not os.path.exists(csv_path):
          return {"status": "error", "message": "ML Database not found"}
