@@ -449,6 +449,31 @@ async def get_drive_images():
     files = [{"name": os.path.basename(f), "path": f"/data/gee_exports/{os.path.basename(f)}"} for f in tif_files]
     return {"images": files}
 
+@app.get("/api/regional_indices")
+async def get_regional_indices():
+    """Returns the most recent regional drought indices from the ML database CSV.
+    This avoids memory crashes on Render by not doing heavy raster computations.
+    """
+    csv_path = 'Binga_Unified_ML_Database_2000_2025.csv'
+    if not os.path.exists(csv_path):
+        return {"status": "error", "message": "ML Database not found"}
+        
+    try:
+        df = pd.read_csv(csv_path).tail(1)
+        row = df.iloc[0]
+        
+        return {
+            "ndvi": round(float(row.get('NDVI_Mean', 0)), 2),
+            "vci": round(float(row.get('VCI_Mean', 0)), 1),
+            "tci": round(float(row.get('TCI_Mean', 0)), 1),
+            "vhi": round(float(row.get('VHI_Mean', 0)), 1),
+            "spi1": round(float(row.get('SPI_1_Mean', 0)), 2),
+            "spi3": round(float(row.get('SPI_3_Mean', 0)), 2),
+            "smi": round(float(row.get('SMI_Mean', 0.18)), 2)
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/tiles/{filename}/{z}/{x}/{y}.png")
 async def get_tile(filename: str, z: int, x: int, y: int):
     """

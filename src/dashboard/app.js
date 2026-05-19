@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initData() {
         fetchWeatherData(-17.62, 27.33, 'Binga District');
         loadForecast(); // Load ML Prediction Forecast
+        loadRegionalIndices(); // Load Regional Drought Indices
         loadAdminBoundary(); // Load Binga District boundary
         loadProtectedZones(); // Load National Parks (Excluded Zones)
         fetch(API_BASE_URL + '/api/farmers')
@@ -311,6 +312,38 @@ function loadForecast() {
                 document.getElementById('vhi-status').textContent = `Status: ${data.forecast[0].risk_level}`;
             }
         });
+}
+
+function loadRegionalIndices() {
+    fetch(API_BASE_URL + '/api/regional_indices')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'error') return;
+            
+            // Update the DOM elements
+            if (document.getElementById('idx-ndvi-val')) document.getElementById('idx-ndvi-val').textContent = data.ndvi;
+            if (document.getElementById('idx-vci-val')) document.getElementById('idx-vci-val').textContent = data.vci + '%';
+            if (document.getElementById('idx-tci-val')) document.getElementById('idx-tci-val').textContent = data.tci + '%';
+            if (document.getElementById('idx-vhi-val')) document.getElementById('idx-vhi-val').textContent = data.vhi + '%';
+            if (document.getElementById('idx-spi1-val')) document.getElementById('idx-spi1-val').textContent = data.spi1;
+            if (document.getElementById('idx-spi3-val')) document.getElementById('idx-spi3-val').textContent = data.spi3;
+            if (document.getElementById('idx-smi-val')) document.getElementById('idx-smi-val').textContent = data.smi + ' m³';
+            
+            // Update the progress bars (values are out of 100 or mapped appropriately)
+            const mapBar = (val, max, elId) => {
+                const el = document.querySelector(`#${elId} .idx-bar-fill`);
+                if (el) el.style.width = Math.min(Math.max((val / max) * 100, 0), 100) + '%';
+            };
+            
+            mapBar(data.ndvi + 1, 2, 'idx-ndvi'); // -1 to 1 mapped to 0-100%
+            mapBar(data.vci, 100, 'idx-vci');
+            mapBar(data.tci, 100, 'idx-tci');
+            mapBar(data.vhi, 100, 'idx-vhi');
+            mapBar(data.spi1 + 3, 6, 'idx-spi1'); // -3 to 3 mapped to 0-100%
+            mapBar(data.spi3 + 3, 6, 'idx-spi3');
+            mapBar(data.smi, 1, 'idx-smi'); // 0 to 1 mapped to 0-100%
+        })
+        .catch(err => console.error('Error loading regional indices:', err));
 }
 
 // ─── Map Controls ───
@@ -823,7 +856,7 @@ document.head.appendChild(style);
 // ─── Live Weather API (Open-Meteo) ───
 async function fetchLiveWeather(lat = -17.2755, lng = 29.9905) {
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=soil_moisture_0_to_1cm,et0_fao_evapotranspiration&timezone=Africa%2FHarare`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=soil_moisture_0_to_1cm,et0_fao_evapotranspiration&timezone=Africa%2FHarare`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -848,8 +881,26 @@ async function fetchLiveWeather(lat = -17.2755, lng = 29.9905) {
         else if (code === 3) { condition = "Overcast"; emoji = "☁️"; }
         else if (code >= 51) { condition = "Rain / Showers"; emoji = "🌧️"; }
 
-        if (wDesc) wDesc.textContent = condition + (selectedFarm ? ` (${selectedFarm.properties.name})` : " (Binga)");
+        if (wDesc) wDesc.textContent = condition + (typeof selectedFarm !== 'undefined' && selectedFarm ? ` (${selectedFarm.properties.name})` : " (Binga)");
         if (wIcon) wIcon.textContent = emoji;
+
+        // Also update bottom bar indices
+        if (document.getElementById('idx-lst-val')) document.getElementById('idx-lst-val').textContent = Math.round(current.temperature_2m) + '°C';
+        if (document.getElementById('idx-precip-val')) document.getElementById('idx-precip-val').textContent = current.precipitation + ' mm';
+        if (document.getElementById('idx-rh-val')) document.getElementById('idx-rh-val').textContent = current.relative_humidity_2m + '%';
+        
+        // Use hourly if available
+        const et0 = data.hourly && data.hourly.et0_fao_evapotranspiration ? data.hourly.et0_fao_evapotranspiration[0] : 0;
+        if (document.getElementById('idx-et-val')) document.getElementById('idx-et-val').textContent = (et0 || 0).toFixed(1) + ' mm/d';
+        
+        const mapBar = (val, max, elId) => {
+            const el = document.querySelector(`#${elId} .idx-bar-fill`);
+            if (el) el.style.width = Math.min(Math.max((val / max) * 100, 0), 100) + '%';
+        };
+        mapBar(current.temperature_2m, 50, 'idx-lst');
+        mapBar(current.precipitation, 100, 'idx-precip');
+        mapBar(current.relative_humidity_2m, 100, 'idx-rh');
+        mapBar(et0, 10, 'idx-et');
 
     } catch (error) { console.error("Weather Error:", error); }
 }

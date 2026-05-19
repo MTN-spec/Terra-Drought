@@ -1901,3 +1901,202 @@ body {
 .dark-popup button:active {
     transform: translateY(0);
 }
+
+/* ============================================================
+   BOTTOM INDICES BAR
+   ============================================================ */
+.indices-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    height: var(--bottom-panel-height);
+    background: linear-gradient(180deg, rgba(15, 25, 35, 0.92) 0%, rgba(22, 33, 48, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 20px 12px 20px;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.indices-bar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.indices-bar-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-accent);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.indices-bar-subtitle {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.indices-scroll-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 1;
+    align-items: stretch;
+    scroll-behavior: smooth;
+    padding-bottom: 4px;
+}
+
+.indices-scroll-container::-webkit-scrollbar {
+    height: 3px;
+}
+
+.indices-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.indices-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(96, 165, 250, 0.3);
+    border-radius: 10px;
+}
+
+.index-metric-card {
+    min-width: 130px;
+    max-width: 150px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.index-metric-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(96, 165, 250, 0.06) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.index-metric-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(96, 165, 250, 0.25);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.index-metric-card:hover::before {
+    opacity: 1;
+}
+
+.index-metric-card.highlight {
+    border-color: rgba(139, 92, 246, 0.35);
+    background: rgba(139, 92, 246, 0.08);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+.index-metric-card.highlight .idx-label {
+    color: #a78bfa;
+}
+
+.idx-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.idx-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+.idx-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.idx-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.idx-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.idx-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Pulse animation for critical indices */
+@keyframes idxPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.index-metric-card.critical {
+    animation: idxPulse 2s ease-in-out infinite;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Responsive: stack on very small screens */
+@media (max-width: 768px) {
+    .indices-bottom-bar {
+        left: 0;
+        height: auto;
+        max-height: 140px;
+        padding: 8px 12px;
+    }
+
+    .index-metric-card {
+        min-width: 110px;
+    }
+
+    .indices-bar-subtitle {
+        display: none;
+    }
+}

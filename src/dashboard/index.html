@@ -372,7 +372,113 @@
                         <span class="notif-time">1 day ago</span>
                     </div>
                 </div>
-           <!-- (Bottom Panel Removed as requested) -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== BOTTOM INDICES BAR ===== -->
+    <div class="indices-bottom-bar" id="indices-bottom-bar">
+        <div class="indices-bar-header">
+            <span class="indices-bar-title">
+                <i data-lucide="activity" style="width:14px;height:14px"></i>
+                Regional Drought Indices — Binga District
+            </span>
+            <span class="indices-bar-subtitle">Live satellite-derived metrics (2024–2025 season)</span>
+            <button id="layers-toggle" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#8b99ab; padding:4px 10px; border-radius:4px; font-size:10px; cursor:pointer; margin-left:auto;">
+                <span>Hide</span>
+            </button>
+        </div>
+        <div class="indices-scroll-container" id="indices-scroll">
+            <div class="index-metric-card" id="idx-ndvi">
+                <div class="idx-icon" style="background: rgba(16,185,129,0.15); color: #10b981;">🌿</div>
+                <div class="idx-info">
+                    <span class="idx-label">NDVI</span>
+                    <span class="idx-value" id="idx-ndvi-val">0.42</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:52%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-vci">
+                <div class="idx-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;">📊</div>
+                <div class="idx-info">
+                    <span class="idx-label">VCI</span>
+                    <span class="idx-value" id="idx-vci-val">38.5%</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:38%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-tci">
+                <div class="idx-icon" style="background: rgba(239,68,68,0.15); color: #ef4444;">🌡️</div>
+                <div class="idx-info">
+                    <span class="idx-label">TCI</span>
+                    <span class="idx-value" id="idx-tci-val">45.2%</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:45%; background: linear-gradient(90deg, #3b82f6, #f59e0b, #ef4444);"></div></div>
+            </div>
+            <div class="index-metric-card highlight" id="idx-vhi">
+                <div class="idx-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">🛡️</div>
+                <div class="idx-info">
+                    <span class="idx-label">VHI</span>
+                    <span class="idx-value" id="idx-vhi-val">41.8%</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:42%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-spi1">
+                <div class="idx-icon" style="background: rgba(59,130,246,0.15); color: #3b82f6;">💧</div>
+                <div class="idx-info">
+                    <span class="idx-label">SPI-1</span>
+                    <span class="idx-value" id="idx-spi1-val">-0.82</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:36%; background: linear-gradient(90deg, #b91c1c, #fbbf24, #2563eb);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-spi3">
+                <div class="idx-icon" style="background: rgba(59,130,246,0.15); color: #60a5fa;">🌊</div>
+                <div class="idx-info">
+                    <span class="idx-label">SPI-3</span>
+                    <span class="idx-value" id="idx-spi3-val">-1.14</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:28%; background: linear-gradient(90deg, #b91c1c, #fbbf24, #2563eb);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-smi">
+                <div class="idx-icon" style="background: rgba(146,64,14,0.15); color: #d97706;">🏜️</div>
+                <div class="idx-info">
+                    <span class="idx-label">SMI</span>
+                    <span class="idx-value" id="idx-smi-val">0.18 m³</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:30%; background: linear-gradient(90deg, #92400e, #fbbf24, #2563eb);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-lst">
+                <div class="idx-icon" style="background: rgba(239,68,68,0.15); color: #f87171;">🔥</div>
+                <div class="idx-info">
+                    <span class="idx-label">LST</span>
+                    <span class="idx-value" id="idx-lst-val">34.6°C</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:70%; background: linear-gradient(90deg, #3b82f6, #fbbf24, #ef4444);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-et">
+                <div class="idx-icon" style="background: rgba(14,165,233,0.15); color: #0ea5e9;">☁️</div>
+                <div class="idx-info">
+                    <span class="idx-label">ET</span>
+                    <span class="idx-value" id="idx-et-val">3.2 mm/d</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:40%; background: linear-gradient(90deg, #ffffcc, #41b6c4, #0c2c84);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-rh">
+                <div class="idx-icon" style="background: rgba(20,184,166,0.15); color: #14b8a6;">💨</div>
+                <div class="idx-info">
+                    <span class="idx-label">RH</span>
+                    <span class="idx-value" id="idx-rh-val">42.1%</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:42%; background: linear-gradient(90deg, #f6eff7, #67a9cf, #016c59);"></div></div>
+            </div>
+            <div class="index-metric-card" id="idx-precip">
+                <div class="idx-icon" style="background: rgba(59,130,246,0.15); color: #3b82f6;">🌧️</div>
+                <div class="idx-info">
+                    <span class="idx-label">Precip</span>
+                    <span class="idx-value" id="idx-precip-val">28 mm</span>
+                </div>
+                <div class="idx-bar"><div class="idx-bar-fill" style="width:18%; background: linear-gradient(90deg, #f7fbff, #6baed6, #084594);"></div></div>
+            </div>
+        </div>
+    </div>
     
     <!-- PDF Report Modal (Hidden by default) -->
     <div id="report-modal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); justify-content:center; align-items:center;">
@@ -388,8 +494,6 @@
                 </button>
                 <button onclick="document.getElementById('report-modal').style.display='none'" class="aoi-btn" style="background:transparent; color:#8b99ab; border:1px solid #334155; padding:12px 24px; border-radius:6px; cursor:pointer;">Close</button>
             </div>
-        </div>
-    </div>         </div>
         </div>
     </div>
 
