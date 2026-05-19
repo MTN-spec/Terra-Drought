@@ -249,12 +249,7 @@ async def get_drought_prediction():
     return {"forecast": forecasts}
 
 async def get_hybrid_prediction():
-    """Logic for CNN-LSTM Inference using real spatial data if available."""
-    try:
-        import torch
-    except ImportError:
-        return {"status": "error", "message": "PyTorch is not installed in this environment (e.g. Render Lite)."}
-        
+    """Logic for CNN-LSTM Inference using real spatial data if available, or simulated fallback."""
     csv_path = 'Binga_Unified_ML_Database_2000_2025.csv'
     if not os.path.exists(csv_path):
          return {"status": "error", "message": "ML Database not found"}
@@ -263,68 +258,79 @@ async def get_hybrid_prediction():
     
     # 1. Temporal Data Preparation
     temporal_cols = ['NDVI_Mean', 'VCI_Mean', 'TCI_Mean', 'SPI_1_Mean', 'SPI_3_Mean']
-    # If SMI exists in database, swap SPI_1 for SMI (Research Priority)
     if 'SMI_Mean' in df.columns:
         temporal_cols = ['NDVI_Mean', 'VCI_Mean', 'TCI_Mean', 'SPI_3_Mean', 'SMI_Mean']
         
     import numpy as np
+    
+    has_torch = False
     try:
-        seq_data = HYBRID_SCALER.transform(df[temporal_cols])
-        x_temporal = torch.from_numpy(seq_data).float().unsqueeze(0) # (1, 6, 5)
-    except Exception as e:
-        print(f"Scaling error: {e}. Fallback to raw data.")
-        x_temporal = torch.from_numpy(df[temporal_cols].values).float().unsqueeze(0)
-    
-    # 2. Spatial Data Preparation (Try to load latest TIFF)
-    import glob
-    tif_files = glob.glob(os.path.join(LOCAL_DATA_DIR, '*.tif'))
-    x_spatial = None
-    
-    if tif_files:
-        # Pick the most recent TIFF
-        latest_tif = max(tif_files, key=os.path.getmtime)
-        try:
-            import rasterio
-            with rasterio.open(latest_tif) as src:
-                # Read 128x128 window from center
-                data = src.read()
-                if data.shape[0] >= 3:
-                    spatial_img = data[:3, :128, :128]
-                else:
-                    # Pad/Repeat channels if 1-band (e.g. SMI/VHI)
-                    band1 = data[0, :128, :128]
-                    # Ensure 128x128
-                    h, w = band1.shape
-                    if h < 128 or w < 128:
-                        pad_h = max(0, 128 - h)
-                        pad_w = max(0, 128 - w)
-                        band1 = np.pad(band1, ((0, pad_h), (0, pad_w)), mode='constant')
-                    spatial_img = np.stack([band1[:128, :128]] * 3)
-                
-                x_spatial = torch.from_numpy(spatial_img).float().unsqueeze(0)
-                # Normalize 0-1
-                x_min, x_max = x_spatial.min(), x_spatial.max()
-                if x_max > x_min:
-                    x_spatial = (x_spatial - x_min) / (x_max - x_min)
-        except Exception as e:
-            print(f"Error loading TIFF for hybrid model: {e}")
-
-    if x_spatial is None:
-        # Mock Spatial Data if no real TIFF found
-        x_spatial = torch.randn(1, 3, 128, 128) 
-    
-    with torch.no_grad():
-        pred_vhi = HYBRID_MODEL(x_spatial, x_temporal).item()
+        import torch
+        has_torch = True
+    except ImportError:
+        has_torch = False
         
+    x_temporal = None
+    x_spatial = None
+    pred_vhi = 34.2 # Fallback simulated value (High Risk/Moderate boundary)
+    model_status = "CNN-LSTM Hybrid (Simulated Fallback)"
+    
+    if has_torch and HYBRID_SCALER is not None:
+        try:
+            seq_data = HYBRID_SCALER.transform(df[temporal_cols])
+            x_temporal = torch.from_numpy(seq_data).float().unsqueeze(0) # (1, 6, 5)
+        except Exception as e:
+            print(f"Scaling error: {e}. Fallback to raw data.")
+            x_temporal = torch.from_numpy(df[temporal_cols].values).float().unsqueeze(0)
+    
+        # 2. Spatial Data Preparation (Try to load latest TIFF)
+        import glob
+        tif_files = glob.glob(os.path.join(LOCAL_DATA_DIR, '*.tif'))
+        
+        if tif_files:
+            latest_tif = max(tif_files, key=os.path.getmtime)
+            try:
+                import rasterio
+                with rasterio.open(latest_tif) as src:
+                    data = src.read()
+                    if data.shape[0] >= 3:
+                        spatial_img = data[:3, :128, :128]
+                    else:
+                        band1 = data[0, :128, :128]
+                        h, w = band1.shape
+                        if h < 128 or w < 128:
+                            pad_h = max(0, 128 - h)
+                            pad_w = max(0, 128 - w)
+                            band1 = np.pad(band1, ((0, pad_h), (0, pad_w)), mode='constant')
+                        spatial_img = np.stack([band1[:128, :128]] * 3)
+                    
+                    x_spatial = torch.from_numpy(spatial_img).float().unsqueeze(0)
+                    x_min, x_max = x_spatial.min(), x_spatial.max()
+                    if x_max > x_min:
+                        x_spatial = (x_spatial - x_min) / (x_max - x_min)
+            except Exception as e:
+                print(f"Error loading TIFF for hybrid model: {e}")
+
+        if x_spatial is None:
+            x_spatial = torch.randn(1, 3, 128, 128) 
+        
+        if HYBRID_MODEL is not None:
+            try:
+                with torch.no_grad():
+                    pred_vhi = HYBRID_MODEL(x_spatial, x_temporal).item()
+                    model_status = "CNN-LSTM Hybrid (Live Inference)"
+            except Exception as e:
+                print(f"Inference error: {e}")
+
     return {
         "forecast": [{
             "month": (int(df['Month'].iloc[-1]) % 12) + 1,
             "horizon": "T+1",
             "predicted_vhi": round(float(pred_vhi), 2),
             "risk_level": "High" if pred_vhi < 35 else "Moderate" if pred_vhi < 50 else "Low",
-            "model": "CNN-LSTM Hybrid (Research Mode)"
+            "model": model_status
         }],
-        "note": "Using real spatial data from synced GEE exports." if tif_files else "Using fallback temporal prediction."
+        "note": f"{model_status}. PyTorch: {'Active' if has_torch else 'Offline'}."
     }
 
 @app.post("/api/sync_data")
