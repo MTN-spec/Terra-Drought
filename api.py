@@ -250,7 +250,11 @@ async def get_drought_prediction():
 
 async def get_hybrid_prediction():
     """Logic for CNN-LSTM Inference using real spatial data if available."""
-    import torch
+    try:
+        import torch
+    except ImportError:
+        return {"status": "error", "message": "PyTorch is not installed in this environment (e.g. Render Lite)."}
+        
     csv_path = 'Binga_Unified_ML_Database_2000_2025.csv'
     if not os.path.exists(csv_path):
          return {"status": "error", "message": "ML Database not found"}

@@ -148,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error("API Offline");
                 return res.json();
             })
+            .then(data => {
+                if (data.status === "error") throw new Error(data.message);
+                return data;
+            })
             .catch(() => {
                 console.warn("Live API not found, falling back to static farmer_db.json");
                 return fetch('data/farmer_db.json').then(res => res.json());
@@ -262,7 +266,10 @@ function loadForecast() {
 
     console.log("Loading predictions from:", API_BASE_URL + '/api/predict');
     fetch(API_BASE_URL + '/api/predict')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error("API returns " + res.status);
+            return res.json();
+        })
         .then(data => {
             forecastList.innerHTML = '';
             if (data.status === 'error') {
@@ -281,9 +288,11 @@ function loadForecast() {
                 </div>`;
             forecastList.appendChild(header);
 
+            if (!data.forecast) return;
+
             data.forecast.forEach(item => {
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                const monthName = monthNames[item.month - 1];
+                const monthName = monthNames[(item.month - 1) % 12];
                 const riskClass = item.risk_level === 'High' ? 'triggered' : (item.risk_level === 'Moderate' ? 'warning' : 'healthy');
 
                 const div = document.createElement('div');
@@ -311,6 +320,12 @@ function loadForecast() {
                 avgVhi.textContent = data.forecast[0].predicted_vhi;
                 document.getElementById('vhi-status').textContent = `Status: ${data.forecast[0].risk_level}`;
             }
+        })
+        .catch(err => {
+            console.error("Forecast API Error:", err);
+            forecastList.innerHTML = `<div class="error-msg" style="color:#f87171; padding:15px; background:rgba(239,68,68,0.1); border-radius:8px; font-size:13px;">
+                <strong>⚠️ Forecast Model Offline</strong><br>Unable to reach prediction backend.
+            </div>`;
         });
 }
 
